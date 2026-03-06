@@ -568,11 +568,12 @@ def add_host():
         return jsonify({"error": f"Missing: {', '.join(missing)}"}), 400
 
     host = {
-        "id":      str(uuid.uuid4()),
-        "name":    body["name"].strip(),
-        "ip":      body["ip"].strip(),
-        "group":   body.get("group", "").strip() or "Ungrouped",
-        "enabled": body.get("enabled", True),
+        "id":          str(uuid.uuid4()),
+        "name":        body["name"].strip(),
+        "ip":          body["ip"].strip(),
+        "group":       body.get("group", "").strip() or "Ungrouped",
+        "device_type": body.get("device_type", "other"),
+        "enabled":     body.get("enabled", True),
     }
     hosts = load_hosts()
     hosts.append(host)
@@ -591,10 +592,11 @@ def update_host(host_id):
     hosts = load_hosts()
     for i, h in enumerate(hosts):
         if h["id"] == host_id:
-            if "name"    in body: hosts[i]["name"]    = body["name"].strip()
-            if "ip"      in body: hosts[i]["ip"]       = body["ip"].strip()
-            if "group"   in body: hosts[i]["group"]    = body["group"].strip() or "Ungrouped"
-            if "enabled" in body: hosts[i]["enabled"]  = body["enabled"]
+            if "name"        in body: hosts[i]["name"]        = body["name"].strip()
+            if "ip"          in body: hosts[i]["ip"]           = body["ip"].strip()
+            if "group"       in body: hosts[i]["group"]        = body["group"].strip() or "Ungrouped"
+            if "device_type" in body: hosts[i]["device_type"]  = body["device_type"]
+            if "enabled"     in body: hosts[i]["enabled"]      = body["enabled"]
             save_hosts(hosts)
             return jsonify(hosts[i])
     return jsonify({"error": "Host not found"}), 404

@@ -112,13 +112,35 @@ function fmtDate(iso) {
 }
 
 // ── Host Modal ───────────────────────────────────────────────
-const EMPTY_HOST = { name:"", ip:"", group:"", enabled:true };
+const DEVICE_TYPES = [
+  { value:"server",      label:"Server",      icon:"🖥" },
+  { value:"workstation", label:"Workstation", icon:"💻" },
+  { value:"router",      label:"Router",      icon:"🔀" },
+  { value:"switch",      label:"Switch",      icon:"🔌" },
+  { value:"firewall",    label:"Firewall",    icon:"🛡" },
+  { value:"access_point",label:"Access Point",icon:"📶" },
+  { value:"camera",      label:"Camera",      icon:"📷" },
+  { value:"printer",     label:"Printer",     icon:"🖨" },
+  { value:"nas",         label:"NAS / Storage",icon:"💾" },
+  { value:"other",       label:"Other",       icon:"📡" },
+];
+
+const deviceIcon  = t => DEVICE_TYPES.find(d=>d.value===t)?.icon  || "📡";
+const deviceLabel = t => DEVICE_TYPES.find(d=>d.value===t)?.label || "Other";
+
+const EMPTY_HOST = { name:"", ip:"", group:"", device_type:"other", enabled:true };
 
 function HostModal({ host, groups, onClose, onSave }) {
   const editing = !!host;
-  const [form, setForm]   = useState(host ? { name:host.name, ip:host.ip, group:host.group==="Ungrouped"?"":host.group, enabled:host.enabled } : {...EMPTY_HOST});
+  const [form, setForm] = useState(host ? {
+    name:        host.name,
+    ip:          host.ip,
+    group:       host.group==="Ungrouped" ? "" : host.group,
+    device_type: host.device_type || "other",
+    enabled:     host.enabled,
+  } : {...EMPTY_HOST});
   const [saving, setSaving] = useState(false);
-  const [error, setError]   = useState(null);
+  const [error,  setError]  = useState(null);
   const set = k => v => setForm(f=>({...f,[k]:v}));
 
   const handleSave = async () => {
@@ -138,7 +160,7 @@ function HostModal({ host, groups, onClose, onSave }) {
     <div style={{ position:"fixed", inset:0, background:"#00000099", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:100 }}>
       <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderRadius:8,
-        padding:28, width:440, maxWidth:"95vw" }}>
+        padding:28, width:480, maxWidth:"95vw" }}>
         <div style={{ fontSize:14, fontWeight:700, color:C.white, marginBottom:20,
           borderBottom:`1px solid ${C.border}`, paddingBottom:12 }}>
           {editing ? "✏ Edit Host" : "➕ Add Host"}
@@ -148,6 +170,30 @@ function HostModal({ host, groups, onClose, onSave }) {
             placeholder="e.g. Web Server 01" required/>
           <Field label="IP Address" value={form.ip} onChange={set("ip")}
             placeholder="e.g. 192.168.1.10" required hint="IPv4 or IPv6 address"/>
+
+          {/* Device type picker */}
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <label style={{ fontSize:10, color:C.muted, fontWeight:700,
+              letterSpacing:"0.1em", textTransform:"uppercase" }}>Device Type</label>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6 }}>
+              {DEVICE_TYPES.map(dt => (
+                <button key={dt.value} onClick={()=>set("device_type")(dt.value)} style={{
+                  background: form.device_type===dt.value ? C.teal+"33" : "#0A1018",
+                  border: `1px solid ${form.device_type===dt.value ? C.teal : C.border}`,
+                  borderRadius:5, padding:"8px 4px", cursor:"pointer",
+                  display:"flex", flexDirection:"column", alignItems:"center", gap:4,
+                  transition:"all 0.15s",
+                }}>
+                  <span style={{ fontSize:18 }}>{dt.icon}</span>
+                  <span style={{ fontSize:9, color:form.device_type===dt.value?C.teal:C.muted,
+                    fontFamily:"inherit", fontWeight:700, letterSpacing:"0.05em" }}>
+                    {dt.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
             <label style={{ fontSize:10, color:C.muted, fontWeight:700,
               letterSpacing:"0.1em", textTransform:"uppercase" }}>Group</label>
@@ -640,16 +686,18 @@ export default function App() {
                 <div style={{ overflowX:"auto" }}>
                   <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                     <thead><tr>
-                      {["Host","IP","Group","Status","Last Seen","Connectivity"].map(h=><TH key={h}>{h}</TH>)}
+                      {["","Host","IP","Group","Type","Status","Last Seen","Connectivity"].map(h=><TH key={h}>{h}</TH>)}
                     </tr></thead>
                     <tbody>
                       {hosts.map((h,i)=>(
                         <tr key={h.id} style={{ borderBottom:`1px solid ${C.border}`,
                           background:i%2===0?C.panel:"#12192A",
                           opacity:h.enabled===false?0.4:1 }}>
+                          <TD style={{ fontSize:16, paddingRight:4 }} title={deviceLabel(h.device_type)}>{deviceIcon(h.device_type)}</TD>
                           <TD style={{ color:C.white, fontWeight:700 }}>{h.name}</TD>
                           <TD style={{ color:C.teal, fontFamily:"monospace" }}>{h.ip}</TD>
                           <TD style={{ color:C.muted }}>{h.group||"Ungrouped"}</TD>
+                          <TD style={{ color:C.muted }}>{deviceLabel(h.device_type||"other")}</TD>
                           <td style={{ padding:"8px 14px" }}><StatusBadge s={h.status} acked={h.acknowledged}/></td>
                           <TD style={{ color:C.muted }}>{relTime(h.last_seen)}</TD>
                           <td style={{ padding:"8px 14px" }}><ConnBar hostId={h.id}/></td>
@@ -686,7 +734,7 @@ export default function App() {
                     <div style={{ overflowX:"auto" }}>
                       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                         <thead><tr>
-                          {["Host Name","IP Address","Status","Last Seen","Last Check","Connectivity (last 24)","Actions"].map(h=><TH key={h}>{h}</TH>)}
+                          {["","Host Name","IP Address","Type","Status","Last Seen","Last Check","Connectivity (last 24)","Actions"].map(h=><TH key={h}>{h}</TH>)}
                         </tr></thead>
                         <tbody>
                           {ghosts.map((h,i)=>(
@@ -694,11 +742,13 @@ export default function App() {
                               background:i%2===0?C.panel:"#12192A",
                               opacity:h.enabled===false?0.45:1,
                               animation:"fadeIn 0.2s ease" }}>
+                              <TD style={{ fontSize:16, paddingRight:4 }} title={deviceLabel(h.device_type)}>{deviceIcon(h.device_type)}</TD>
                               <TD style={{ color:C.white, fontWeight:700 }}>
                                 {h.name}
                                 {h.enabled===false&&<span style={{color:C.muted,fontSize:9,marginLeft:6}}>(disabled)</span>}
                               </TD>
                               <TD style={{ color:C.teal, fontFamily:"monospace" }}>{h.ip}</TD>
+                              <TD style={{ color:C.muted }}>{deviceLabel(h.device_type||"other")}</TD>
                               <td style={{ padding:"8px 14px" }}><StatusBadge s={h.status} acked={h.acknowledged}/></td>
                               <td style={{ padding:"8px 14px" }}>
                                 <span style={{ color:C.text }} title={fmtDate(h.last_seen)}>
