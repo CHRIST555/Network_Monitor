@@ -782,10 +782,10 @@ function IconGrid({ hosts, grouped, groupOrder, onEdit, onDelete, onPing, pingin
     setOverGroup(null);
   };
 
-  // Use passed groupOrder, fall back to alphabetical
-  const orderedGroups = groupOrder
-    ? groupOrder.filter(g => grouped[g] !== undefined)
-    : Object.keys(grouped).sort();
+  // Use passed groupOrder, fall back to Object.keys
+  const orderedGroups = groupOrder && groupOrder.length > 0
+    ? groupOrder.filter(g => g in grouped)
+    : Object.keys(grouped);
 
   const btnStyle = (disabled) => ({
     background:"none", border:`1px solid ${C.border}`, borderRadius:3,
@@ -1007,7 +1007,7 @@ export default function App() {
   const groups = [...new Set([
     ...groupList,
     ...hosts.map(h=>h.group||"Ungrouped")
-  ])].sort();
+  ])]; // preserve groupList order — do NOT sort
   const groupNames = groups.filter(g=>g!=="Ungrouped");
 
   // Sync groupList whenever hosts change — add any new groups from hosts
