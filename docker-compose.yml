@@ -1,18 +1,5 @@
 version: "3.9"
 
-# ============================================================
-#  Host Monitor — docker-compose.yml
-#
-#  QUICK START:
-#    1. Copy your cert files into ./certs/
-#         certs/server.crt   (full chain)
-#         certs/server.key   (private key)
-#    2. docker compose up -d --build
-#    3. Open https://your-domain.com
-#    4. Go to Hosts tab → Add Host
-#    5. Go to ⚙ Settings to set ping interval & SMTP alerts
-# ============================================================
-
 services:
 
   backend:
@@ -25,7 +12,6 @@ services:
       - network-monitor-data:/data
     expose:
       - "5000"
-    # NET_RAW is required so the container can send ICMP ping packets
     cap_add:
       - NET_RAW
     networks:

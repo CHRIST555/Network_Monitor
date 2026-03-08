@@ -1,13 +1,70 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useContext, createContext } from "react";
 
 const API = "";
 
-const C = {
-  navy:"#1B2A4A", blue:"#1A6B8A", teal:"#048A81",
-  orange:"#E07B39", red:"#C0392B", green:"#27AE60",
-  yellow:"#D4AC0D", white:"#FFFFFF", dark:"#0F1923",
-  panel:"#161F2E", border:"#1E293B", muted:"#64748B", text:"#94A3B8",
+const THEMES = {
+  dark: {
+    name: "Dark",
+    dark:      "#050D18",
+    navy:      "#0B1A2E",
+    panel:     "#0D1B2E",
+    border:    "#1A3A5C",
+    muted:     "#5C7A99",
+    text:      "#8BAFC7",
+    white:     "#FFFFFF",
+    input:     "#0A1525",
+    subheader: "#0A1018",
+    tabBar:    "#0B1A2E",
+    bodyText:  "#CBD5E1",
+    modalBg:   "#0D1B2E",
+    rowHover:  "#0A1525",
+  },
+  blue: {
+    name: "Blue",
+    dark:      "#082050",
+    navy:      "#0D47A1",
+    panel:     "#0E52B8",
+    border:    "#1976D2",
+    muted:     "#90CAF9",
+    text:      "#BBDEFB",
+    white:     "#FFFFFF",
+    input:     "#0A3A8A",
+    subheader: "#0A3070",
+    tabBar:    "#0D47A1",
+    bodyText:  "#E3F2FD",
+    modalBg:   "#0D3A90",
+    rowHover:  "#0A3A8A",
+  },
+  white: {
+    name: "White",
+    dark:      "#F0F4F8",
+    navy:      "#FFFFFF",
+    panel:     "#FFFFFF",
+    border:    "#CBD5E1",
+    muted:     "#64748B",
+    text:      "#475569",
+    white:     "#1E293B",
+    input:     "#F8FAFC",
+    subheader: "#F1F5F9",
+    tabBar:    "#FFFFFF",
+    bodyText:  "#1E293B",
+    modalBg:   "#FFFFFF",
+    rowHover:  "#F8FAFC",
+  },
 };
+
+const ACCENT = {
+  orange: "#FC3D21",
+  red:    "#B71C1C",
+  green:  "#00C853",
+  yellow: "#FFD600",
+  blue:   "#0D47A1",
+  teal:   "#1565C0",
+};
+
+// Theme context — all components read C from here
+const ThemeCtx = createContext({ ...THEMES.dark, ...ACCENT });
+const useC = () => useContext(ThemeCtx);
 
 // ── UI Atoms ─────────────────────────────────────────────────
 const Badge = ({ label, color, bg }) => (
@@ -15,85 +72,96 @@ const Badge = ({ label, color, bg }) => (
     fontWeight:700, fontSize:10, border:`1px solid ${color}44`, whiteSpace:"nowrap" }}>{label}</span>
 );
 
-const statusColor  = s => s==="online"?"#27AE60":s==="offline"?"#C0392B":"#64748B";
-const statusBg     = s => s==="online"?"#0A1A0A":s==="offline"?"#1A0505":"#0F1923";
-const statusLabel  = s => s==="online"?"● Online":s==="offline"?"● Offline":"● Unknown";
-const StatusBadge  = ({ s, acked }) => (
+const statusColor = s => s==="online"?ACCENT.green:s==="offline"?ACCENT.red:"#64748B";
+const statusBg    = s => s==="online"?`${ACCENT.green}18`:s==="offline"?`${ACCENT.red}18`:"#64748B18";
+const statusLabel = s => s==="online"?"● Online":s==="offline"?"● Offline":"● Unknown";
+const StatusBadge = ({ s, acked }) => (
   <span style={{ display:"flex", alignItems:"center", gap:5 }}>
     <Badge label={statusLabel(s)} color={statusColor(s)} bg={statusBg(s)} />
-    {acked && <Badge label="✓ Ack'd" color={C.orange} bg="#1A0E00"/>}
+    {acked && <Badge label="✓ Ack'd" color={ACCENT.orange} bg={`${ACCENT.orange}18`}/>}
   </span>
 );
 
-const Panel = ({ children, style={} }) => (
-  <div style={{ background:C.panel, border:`1px solid ${C.border}`,
-    borderRadius:6, overflow:"hidden", ...style }}>{children}</div>
-);
+const Panel = ({ children, style={} }) => {
+  const C = useC();
+  return <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderRadius:6, overflow:"hidden", ...style }}>{children}</div>;
+};
 
-const SH = ({ title, color=C.teal, action }) => (
-  <div style={{ background:"#0A1018", borderLeft:`3px solid ${color}`, padding:"10px 16px",
-    fontSize:11, fontWeight:700, color, letterSpacing:"0.12em", textTransform:"uppercase",
-    display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-    <span>{title}</span>{action}
-  </div>
-);
-
-const KPI = ({ label, value, color, icon, sub }) => (
-  <div style={{ background:C.panel, border:`1px solid ${C.border}`,
-    borderTop:`3px solid ${color}`, borderRadius:6, padding:"14px 16px" }}>
-    <div style={{ fontSize:22, marginBottom:4 }}>{icon}</div>
-    <div style={{ fontSize:28, fontWeight:800, color, lineHeight:1 }}>{value}</div>
-    {sub && <div style={{ fontSize:10, color:C.muted, marginTop:3 }}>{sub}</div>}
-    <div style={{ fontSize:10, color:C.muted, marginTop:6,
-      letterSpacing:"0.1em", textTransform:"uppercase" }}>{label}</div>
-  </div>
-);
-
-const TH = ({ children }) => (
-  <th style={{ padding:"9px 14px", textAlign:"left", color:C.muted, fontWeight:700,
-    letterSpacing:"0.07em", textTransform:"uppercase", fontSize:10,
-    borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap", background:"#0A1018" }}>{children}</th>
-);
-
-const TD = ({ children, style={} }) => (
-  <td style={{ padding:"8px 14px", color:C.text, whiteSpace:"nowrap", ...style }}>{children}</td>
-);
-
-const Btn = ({ children, onClick, color=C.teal, small=false, disabled=false, style={} }) => (
-  <button onClick={onClick} disabled={disabled} style={{
-    background:disabled?"#1E293B":color, color:C.white, border:"none", borderRadius:4,
-    padding:small?"4px 11px":"8px 18px", cursor:disabled?"not-allowed":"pointer",
-    fontFamily:"inherit", fontWeight:700, fontSize:small?10:12,
-    opacity:disabled?0.5:1, transition:"all 0.15s", whiteSpace:"nowrap", ...style,
-  }}>{children}</button>
-);
-
-const Field = ({ label, value, onChange, type="text", placeholder="", required=false, hint, disabled=false }) => (
-  <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
-    <label style={{ fontSize:10, color:C.muted, fontWeight:700,
-      letterSpacing:"0.1em", textTransform:"uppercase" }}>
-      {label}{required&&<span style={{color:C.red}}> *</span>}
-    </label>
-    <input type={type} value={value} onChange={e=>onChange(e.target.value)}
-      placeholder={placeholder} disabled={disabled}
-      style={{ background:disabled?"#0A0F16":"#0A1018", border:`1px solid ${C.border}`, borderRadius:4,
-        padding:"8px 12px", color:disabled?C.muted:C.white, fontFamily:"inherit", fontSize:12,
-        outline:"none", width:"100%", opacity:disabled?0.6:1 }}/>
-    {hint&&<span style={{fontSize:10,color:C.muted}}>{hint}</span>}
-  </div>
-);
-
-const Toggle = ({ label, checked, onChange }) => (
-  <div style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer" }}
-    onClick={()=>onChange(!checked)}>
-    <div style={{ width:36, height:20, borderRadius:10, background:checked?C.teal:"#1E293B",
-      position:"relative", transition:"background 0.2s", border:`1px solid ${C.border}` }}>
-      <div style={{ width:14, height:14, borderRadius:"50%", background:C.white,
-        position:"absolute", top:2, left:checked?18:2, transition:"left 0.2s" }}/>
+const SH = ({ title, color, action }) => {
+  const C = useC();
+  const c = color || ACCENT.teal;
+  return (
+    <div style={{ background:C.subheader, borderLeft:`3px solid ${c}`, padding:"10px 16px",
+      fontSize:11, fontWeight:700, color:c, letterSpacing:"0.12em", textTransform:"uppercase",
+      display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+      <span>{title}</span>{action}
     </div>
-    <span style={{ fontSize:12, color:C.text }}>{label}</span>
-  </div>
-);
+  );
+};
+
+const KPI = ({ label, value, color, icon, sub }) => {
+  const C = useC();
+  return (
+    <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderTop:`3px solid ${color}`, borderRadius:6, padding:"14px 16px" }}>
+      <div style={{ fontSize:22, marginBottom:4 }}>{icon}</div>
+      <div style={{ fontSize:28, fontWeight:800, color, lineHeight:1 }}>{value}</div>
+      {sub && <div style={{ fontSize:10, color:C.muted, marginTop:3 }}>{sub}</div>}
+      <div style={{ fontSize:10, color:C.muted, marginTop:6, letterSpacing:"0.1em", textTransform:"uppercase" }}>{label}</div>
+    </div>
+  );
+};
+
+const TH = ({ children }) => {
+  const C = useC();
+  return <th style={{ padding:"9px 14px", textAlign:"left", color:C.muted, fontWeight:700, letterSpacing:"0.07em", textTransform:"uppercase", fontSize:10, borderBottom:`1px solid ${C.border}`, whiteSpace:"nowrap", background:C.subheader }}>{children}</th>;
+};
+
+const TD = ({ children, style={} }) => {
+  const C = useC();
+  return <td style={{ padding:"8px 14px", color:C.text, whiteSpace:"nowrap", ...style }}>{children}</td>;
+};
+
+const Btn = ({ children, onClick, color, small=false, disabled=false, style={} }) => {
+  const C = useC();
+  const bg = color || ACCENT.teal;
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background:disabled?C.border:bg, color:"#FFFFFF", border:"none", borderRadius:4,
+      padding:small?"4px 11px":"8px 18px", cursor:disabled?"not-allowed":"pointer",
+      fontFamily:"inherit", fontWeight:700, fontSize:small?10:12,
+      opacity:disabled?0.5:1, transition:"all 0.15s", whiteSpace:"nowrap", ...style,
+    }}>{children}</button>
+  );
+};
+
+const Field = ({ label, value, onChange, type="text", placeholder="", required=false, hint, disabled=false }) => {
+  const C = useC();
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:4 }}>
+      <label style={{ fontSize:10, color:C.muted, fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase" }}>
+        {label}{required&&<span style={{color:ACCENT.red}}> *</span>}
+      </label>
+      <input type={type} value={value} onChange={e=>onChange(e.target.value)}
+        placeholder={placeholder} disabled={disabled}
+        style={{ background:C.input, border:`1px solid ${C.border}`, borderRadius:4,
+          padding:"8px 12px", color:disabled?C.muted:C.white, fontFamily:"inherit", fontSize:12,
+          outline:"none", width:"100%", opacity:disabled?0.6:1 }}/>
+      {hint&&<span style={{fontSize:10,color:C.muted}}>{hint}</span>}
+    </div>
+  );
+};
+
+const Toggle = ({ label, checked, onChange }) => {
+  const C = useC();
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:10, cursor:"pointer" }} onClick={()=>onChange(!checked)}>
+      <div style={{ width:36, height:20, borderRadius:10, background:checked?ACCENT.teal:C.border, position:"relative", transition:"background 0.2s", border:`1px solid ${C.border}` }}>
+        <div style={{ width:14, height:14, borderRadius:"50%", background:"#FFFFFF", position:"absolute", top:2, left:checked?18:2, transition:"left 0.2s" }}/>
+      </div>
+      <span style={{ fontSize:12, color:C.text }}>{label}</span>
+    </div>
+  );
+};
 
 // ── Relative time helper ─────────────────────────────────────
 function relTime(iso) {
@@ -113,16 +181,20 @@ function fmtDate(iso) {
 
 // ── Host Modal ───────────────────────────────────────────────
 const DEVICE_TYPES = [
-  { value:"server",      label:"Server",      icon:"🖥" },
-  { value:"workstation", label:"Workstation", icon:"💻" },
-  { value:"router",      label:"Router",      icon:"🔀" },
-  { value:"switch",      label:"Switch",      icon:"🔌" },
-  { value:"firewall",    label:"Firewall",    icon:"🛡" },
-  { value:"access_point",label:"Access Point",icon:"📶" },
-  { value:"camera",      label:"Camera",      icon:"📷" },
-  { value:"printer",     label:"Printer",     icon:"🖨" },
-  { value:"nas",         label:"NAS / Storage",icon:"💾" },
-  { value:"other",       label:"Other",       icon:"📡" },
+  { value:"server",       label:"Server",          icon:"🖥" },
+  { value:"workstation",  label:"Workstation",     icon:"💻" },
+  { value:"laptop",       label:"Laptop",          icon:"💻" },
+  { value:"router",       label:"Router",          icon:"🔀" },
+  { value:"switch",       label:"Switch",          icon:"🔌" },
+  { value:"firewall",     label:"Firewall",        icon:"🛡" },
+  { value:"gateway",      label:"Gateway",         icon:"🚪" },
+  { value:"access_point", label:"Access Point",    icon:"📶" },
+  { value:"antenna",      label:"Antenna",         icon:"📡" },
+  { value:"camera",       label:"Security Camera", icon:"📷" },
+  { value:"printer",      label:"Printer",         icon:"🖨" },
+  { value:"nas",          label:"NAS / Storage",   icon:"💾" },
+  { value:"sensor",       label:"Sensor",          icon:"🌡" },
+  { value:"other",        label:"Other",           icon:"🔧" },
 ];
 
 const deviceIcon  = t => DEVICE_TYPES.find(d=>d.value===t)?.icon  || "📡";
@@ -131,6 +203,7 @@ const deviceLabel = t => DEVICE_TYPES.find(d=>d.value===t)?.label || "Other";
 const EMPTY_HOST = { name:"", ip:"", group:"", device_type:"other", enabled:true };
 
 function HostModal({ host, groups, onClose, onSave }) {
+  const C = useC();
   const editing = !!host;
   const [form, setForm] = useState(host ? {
     name:        host.name,
@@ -178,14 +251,14 @@ function HostModal({ host, groups, onClose, onSave }) {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(5,1fr)", gap:6 }}>
               {DEVICE_TYPES.map(dt => (
                 <button key={dt.value} onClick={()=>set("device_type")(dt.value)} style={{
-                  background: form.device_type===dt.value ? C.teal+"33" : "#0A1018",
-                  border: `1px solid ${form.device_type===dt.value ? C.teal : C.border}`,
+                  background: form.device_type===dt.value ? `${ACCENT.teal}33` : C.subheader,
+                  border: `1px solid ${form.device_type===dt.value ? ACCENT.teal : C.border}`,
                   borderRadius:5, padding:"8px 4px", cursor:"pointer",
                   display:"flex", flexDirection:"column", alignItems:"center", gap:4,
                   transition:"all 0.15s",
                 }}>
                   <span style={{ fontSize:18 }}>{dt.icon}</span>
-                  <span style={{ fontSize:9, color:form.device_type===dt.value?C.teal:C.muted,
+                  <span style={{ fontSize:9, color:form.device_type===dt.value?ACCENT.teal:C.muted,
                     fontFamily:"inherit", fontWeight:700, letterSpacing:"0.05em" }}>
                     {dt.label}
                   </span>
@@ -200,7 +273,7 @@ function HostModal({ host, groups, onClose, onSave }) {
             <input value={form.group} onChange={e=>set("group")(e.target.value)}
               placeholder="e.g. Servers, Workstations, Network"
               list="group-list"
-              style={{ background:"#0A1018", border:`1px solid ${C.border}`, borderRadius:4,
+              style={{ background:C.subheader, border:`1px solid ${C.border}`, borderRadius:4,
                 padding:"8px 12px", color:C.white, fontFamily:"inherit", fontSize:12, outline:"none" }}/>
             <datalist id="group-list">
               {groups.map(g=><option key={g} value={g}/>)}
@@ -208,10 +281,10 @@ function HostModal({ host, groups, onClose, onSave }) {
           </div>
           <Toggle label="Enabled — include this host in ping checks" checked={form.enabled} onChange={set("enabled")}/>
         </div>
-        {error && <div style={{ background:"#1A0505", border:`1px solid ${C.red}44`,
+        {error && <div style={{ background:`${ACCENT.red}18`, border:`1px solid ${C.red}44`,
           borderRadius:4, padding:"10px 14px", color:C.red, fontSize:11, marginTop:16 }}>{error}</div>}
         <div style={{ display:"flex", gap:10, justifyContent:"flex-end", marginTop:20 }}>
-          <Btn onClick={onClose} color="#334155">Cancel</Btn>
+          <Btn onClick={onClose} color={C.border}>Cancel</Btn>
           <Btn onClick={handleSave} disabled={saving}>{saving?"Saving…":editing?"Save Changes":"Add Host"}</Btn>
         </div>
       </div>
@@ -220,7 +293,8 @@ function HostModal({ host, groups, onClose, onSave }) {
 }
 
 // ── Settings Panel ───────────────────────────────────────────
-function SettingsPanel({ onClose }) {
+function SettingsPanel({ onClose, onThemeChange, onNameChange, onBgChange }) {
+  const C = useC();
   const [cfg,     setCfg]     = useState(null);
   const [saving,  setSaving]  = useState(false);
   const [testing, setTesting] = useState(false);
@@ -277,6 +351,68 @@ function SettingsPanel({ onClose }) {
           ⚙ Settings
         </div>
 
+        {/* Site Name */}
+        <div style={{ marginBottom:24 }}>
+          <div style={{ fontSize:11, color:C.teal, fontWeight:700, letterSpacing:"0.1em",
+            textTransform:"uppercase", marginBottom:12 }}>Site Name</div>
+          <Field label="Header Title" value={cfg.network_name||""}
+            onChange={v => { set("network_name")(v); onNameChange(v); }} placeholder="Network Monitor"/>
+          <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
+            Displayed in the top-left header. Leave blank to use "Network Monitor".
+          </div>
+        </div>
+
+        {/* Background Color */}
+        <div style={{ marginBottom:24 }}>
+          <div style={{ fontSize:11, color:ACCENT.teal, fontWeight:700, letterSpacing:"0.1em",
+            textTransform:"uppercase", marginBottom:12 }}>Background Color</div>
+          <div style={{ display:"flex", alignItems:"center", gap:10 }}>
+            <input type="color" value={cfg.bg_color||"#050D18"}
+              onChange={e => { set("bg_color")(e.target.value); onBgChange(e.target.value); }}
+              style={{ width:44, height:36, borderRadius:4, border:`1px solid ${C.border}`,
+                background:"none", cursor:"pointer", padding:2 }}/>
+            <Field label="Hex value" value={cfg.bg_color||""}
+              onChange={v => { set("bg_color")(v); onBgChange(v); }} placeholder="#050D18"/>
+            <button onClick={() => { set("bg_color")(""); onBgChange(""); }}
+              style={{ background:"none", border:`1px solid ${C.border}`, borderRadius:4,
+                color:C.muted, cursor:"pointer", padding:"6px 12px",
+                fontSize:11, fontFamily:"inherit", whiteSpace:"nowrap" }}>Reset</button>
+          </div>
+          <div style={{ fontSize:10, color:C.muted, marginTop:8 }}>
+            Overrides the theme background. Reset to restore theme default.
+          </div>
+        </div>
+        <div style={{ marginBottom:24 }}>
+          <div style={{ fontSize:11, color:ACCENT.teal, fontWeight:700, letterSpacing:"0.1em",
+            textTransform:"uppercase", marginBottom:12 }}>Theme</div>
+          <div style={{ display:"flex", gap:10 }}>
+            {Object.entries(THEMES).map(([key, t]) => {
+              const selected = (cfg.theme||"dark") === key;
+              return (
+                <button key={key} onClick={() => { set("theme")(key); onThemeChange(key); }} style={{
+                  flex:1, padding:"12px 8px", borderRadius:6, cursor:"pointer",
+                  border: selected ? `2px solid ${ACCENT.orange}` : `2px solid ${t.border}`,
+                  background: t.dark, color: t.white,
+                  fontFamily:"inherit", fontWeight:700, fontSize:11,
+                  boxShadow: selected ? `0 0 10px ${ACCENT.orange}55` : "none",
+                  transition:"all 0.2s",
+                }}>
+                  <div style={{ fontSize:20, marginBottom:6 }}>
+                    {key==="dark"?"🌑":key==="blue"?"🌊":"☀️"}
+                  </div>
+                  <div style={{ letterSpacing:"0.1em", textTransform:"uppercase" }}>{t.name}</div>
+                  <div style={{ display:"flex", gap:4, justifyContent:"center", marginTop:8 }}>
+                    {[t.navy, t.panel, t.border].map((col,i) => (
+                      <div key={i} style={{ width:12, height:12, borderRadius:"50%",
+                        background:col, border:"1px solid #fff3" }}/>
+                    ))}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Ping interval */}
         <div style={{ marginBottom:24 }}>
           <div style={{ fontSize:11, color:C.teal, fontWeight:700, letterSpacing:"0.1em",
@@ -284,7 +420,7 @@ function SettingsPanel({ onClose }) {
           <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
             {INTERVALS.map(iv=>(
               <button key={iv.value} onClick={()=>set("ping_interval")(iv.value)} style={{
-                background:cfg.ping_interval===iv.value?C.teal:"#1E293B",
+                background:cfg.ping_interval===iv.value?C.teal:C.border,
                 color:cfg.ping_interval===iv.value?C.white:C.muted,
                 border:"none", borderRadius:4, padding:"6px 16px", cursor:"pointer",
                 fontFamily:"inherit", fontWeight:700, fontSize:12, transition:"all 0.15s",
@@ -344,7 +480,7 @@ function SettingsPanel({ onClose }) {
                       {l:"4h",  v:14400},{l:"12h", v:43200},
                     ].map(iv=>(
                       <button key={iv.v} onClick={()=>set("reminder_interval")(iv.v)} style={{
-                        background:(cfg.reminder_interval??1800)===iv.v?C.orange:"#1E293B",
+                        background:(cfg.reminder_interval??1800)===iv.v?C.orange:C.border,
                         color:(cfg.reminder_interval??1800)===iv.v?C.white:C.muted,
                         border:"none", borderRadius:4, padding:"5px 14px", cursor:"pointer",
                         fontFamily:"inherit", fontWeight:700, fontSize:11,
@@ -379,7 +515,7 @@ function SettingsPanel({ onClose }) {
             {testing?"Sending…":"✉ Send Test Email"}
           </Btn>
           <div style={{ display:"flex", gap:10 }}>
-            <Btn onClick={onClose} color="#334155">Close</Btn>
+            <Btn onClick={onClose} color={C.border}>Close</Btn>
             <Btn onClick={handleSave} disabled={saving}>{saving?"Saving…":"Save Settings"}</Btn>
           </div>
         </div>
@@ -390,6 +526,7 @@ function SettingsPanel({ onClose }) {
 
 // ── Connectivity bar (last N pings) ──────────────────────────
 function ConnBar({ hostId }) {
+  const C = useC();
   const [hist, setHist] = useState([]);
   useEffect(()=>{
     fetch(`${API}/api/hosts/${hostId}/history`)
@@ -409,12 +546,13 @@ function ConnBar({ hostId }) {
 
 // ── Down alert banner ────────────────────────────────────────
 function DownBanner({ hosts, onAck, onUnack }) {
+  const C = useC();
   const down = hosts.filter(h => h.status === "offline" && h.enabled !== false);
   if (!down.length) return null;
   const acked   = down.filter(h => h.acknowledged);
   const unacked = down.filter(h => !h.acknowledged);
   return (
-    <div style={{ background:"#1A0505", border:`1px solid ${C.red}55`,
+    <div style={{ background:`${ACCENT.red}18`, border:`1px solid ${C.red}55`,
       borderRadius:6, padding:"14px 18px", marginBottom:20 }}>
       <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom: unacked.length ? 10 : 0 }}>
         <span style={{ fontSize:20 }}>🚨</span>
@@ -435,13 +573,13 @@ function DownBanner({ hosts, onAck, onUnack }) {
         <div style={{ display:"flex", flexWrap:"wrap", gap:8, marginBottom: acked.length ? 10 : 0 }}>
           {unacked.map(h => (
             <div key={h.id} style={{ display:"flex", alignItems:"center", gap:0,
-              background:"#2A0808", border:`1px solid ${C.red}44`, borderRadius:5,
+              background:`${ACCENT.red}22`, border:`1px solid ${C.red}44`, borderRadius:5,
               overflow:"hidden" }}>
               <span style={{ padding:"5px 12px", fontSize:11, fontWeight:600, color:C.red }}>
                 {h.name} — {h.ip}
               </span>
               <button onClick={() => onAck(h)} style={{
-                background:"#3D0A0A", border:"none", borderLeft:`1px solid ${C.red}44`,
+                background:`${ACCENT.red}28`, border:"none", borderLeft:`1px solid ${C.red}44`,
                 color:C.orange, cursor:"pointer", padding:"5px 10px",
                 fontFamily:"inherit", fontSize:10, fontWeight:700,
                 transition:"background 0.15s",
@@ -458,14 +596,14 @@ function DownBanner({ hosts, onAck, onUnack }) {
         <div style={{ display:"flex", flexWrap:"wrap", gap:8 }}>
           {acked.map(h => (
             <div key={h.id} style={{ display:"flex", alignItems:"center", gap:0,
-              background:"#1A1200", border:`1px solid ${C.orange}33`, borderRadius:5,
+              background:`${ACCENT.orange}15`, border:`1px solid ${C.orange}33`, borderRadius:5,
               overflow:"hidden", opacity:0.75 }}>
               <span style={{ padding:"5px 8px", fontSize:10, color:C.orange }}>✓</span>
               <span style={{ padding:"5px 10px 5px 0", fontSize:11, fontWeight:600, color:C.muted }}>
                 {h.name} — {h.ip}
               </span>
               <button onClick={() => onUnack(h)} style={{
-                background:"#2A1800", border:"none", borderLeft:`1px solid ${C.orange}33`,
+                background:`${ACCENT.orange}22`, border:"none", borderLeft:`1px solid ${C.orange}33`,
                 color:C.muted, cursor:"pointer", padding:"5px 10px",
                 fontFamily:"inherit", fontSize:9, fontWeight:700,
               }} title="Remove acknowledgement — re-enable reminders">
@@ -478,6 +616,235 @@ function DownBanner({ hosts, onAck, onUnack }) {
           </span>
         </div>
       )}
+    </div>
+  );
+}
+
+// ── Icon Grid (draggable host tiles) ─────────────────────────
+function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUnack, isDragOver, onDragStart, onDragOver, onDrop, onDragEnd }) {
+  const C = useC();
+  const s = host.status;
+  const glowColor = s==="online" ? C.green : s==="offline" ? C.red : C.muted;
+  const borderColor = s==="online" ? `${C.green}66` : s==="offline" ? `${C.red}88` : `${C.border}`;
+  return (
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragOver={e => { e.preventDefault(); onDragOver(); }}
+      onDrop={onDrop}
+      onDragEnd={onDragEnd}
+      style={{
+        background: isDragOver ? "#1A2A3A" : C.panel,
+        border: `2px solid ${isDragOver ? C.teal : borderColor}`,
+        borderRadius: 10,
+        padding: "16px 12px 12px",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 8,
+        cursor: "grab",
+        transition: "all 0.15s",
+        opacity: host.enabled === false ? 0.45 : 1,
+        position: "relative",
+        minWidth: 110,
+        boxShadow: s==="offline" ? `0 0 12px ${C.red}33` : s==="online" ? `0 0 8px ${C.green}22` : "none",
+        userSelect: "none",
+      }}
+    >
+      {/* Status dot */}
+      <div style={{
+        position: "absolute", top: 8, right: 8,
+        width: 8, height: 8, borderRadius: "50%",
+        background: glowColor,
+        boxShadow: `0 0 6px ${glowColor}`,
+        animation: s==="offline" ? "pulse 1.5s ease-in-out infinite" : "none",
+      }}/>
+
+      {/* Drag handle hint */}
+      <div style={{ position:"absolute", top:8, left:8, color:C.border, fontSize:9, lineHeight:1 }}>⠿</div>
+
+      {/* Icon */}
+      <div style={{ fontSize: 32, lineHeight: 1, filter: host.enabled===false ? "grayscale(1)" : "none" }}>
+        {deviceIcon(host.device_type)}
+      </div>
+
+      {/* Name */}
+      <div style={{ fontSize: 11, fontWeight: 700, color: C.white, textAlign: "center",
+        maxWidth: 100, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        title={host.name}>
+        {host.name}
+      </div>
+
+      {/* IP */}
+      <div style={{ fontSize: 9, color: C.teal, fontFamily: "monospace" }}>{host.ip}</div>
+
+      {/* Status badge */}
+      <div style={{ fontSize: 9, fontWeight: 700, color: glowColor,
+        background: s==="online"?"#0A1A0A":s==="offline"?"#1A0505":C.dark,
+        border: `1px solid ${glowColor}44`, borderRadius: 3, padding: "2px 7px" }}>
+        {s==="online" ? "● Online" : s==="offline" ? "● Offline" : "● Unknown"}
+        {host.acknowledged && <span style={{ color: C.orange, marginLeft: 4 }}>✓</span>}
+      </div>
+
+      {/* Action buttons */}
+      <div style={{ display: "flex", gap: 4, marginTop: 2 }}>
+        <button onClick={() => onPing(host)} disabled={pinging[host.id]}
+          title="Ping now"
+          style={{ background:C.subheader, border:`1px solid ${C.border}`, borderRadius:3,
+            color: C.teal, cursor:"pointer", fontSize:9, padding:"2px 7px",
+            fontFamily:"inherit", fontWeight:700, opacity: pinging[host.id]?0.5:1 }}>
+          {pinging[host.id] ? "…" : "Ping"}
+        </button>
+        {host.status==="offline" && !host.acknowledged && (
+          <button onClick={() => onAck(host)} disabled={acking[host.id]}
+            title="Acknowledge"
+            style={{ background:"#1A0A00", border:`1px solid ${C.orange}44`, borderRadius:3,
+              color: C.orange, cursor:"pointer", fontSize:9, padding:"2px 7px",
+              fontFamily:"inherit", fontWeight:700 }}>
+            {acking[host.id]?"…":"✓"}
+          </button>
+        )}
+        {host.status==="offline" && host.acknowledged && (
+          <button onClick={() => onUnack(host)} disabled={acking[host.id]}
+            title="Unacknowledge"
+            style={{ background:`${ACCENT.orange}15`, border:`1px solid ${C.muted}33`, borderRadius:3,
+              color: C.muted, cursor:"pointer", fontSize:9, padding:"2px 7px",
+              fontFamily:"inherit", fontWeight:700 }}>
+            {acking[host.id]?"…":"✕"}
+          </button>
+        )}
+        <button onClick={() => onEdit(host)}
+          title="Edit"
+          style={{ background:C.subheader, border:`1px solid ${C.border}`, borderRadius:3,
+            color: C.blue, cursor:"pointer", fontSize:9, padding:"2px 7px",
+            fontFamily:"inherit", fontWeight:700 }}>
+          ✏
+        </button>
+        <button onClick={() => onDelete(host)}
+          title="Delete"
+          style={{ background:C.subheader, border:`1px solid ${C.border}`, borderRadius:3,
+            color: C.red, cursor:"pointer", fontSize:9, padding:"2px 7px",
+            fontFamily:"inherit", fontWeight:700 }}>
+          ✕
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, onAck, onUnack, onReorder, onDeleteGroup }) {
+  const C = useC();
+  const [dragId,      setDragId]      = useState(null);
+  const [overId,      setOverId]      = useState(null);
+  const [overGroup,   setOverGroup]   = useState(null);
+
+  const dragHost = hosts.find(h => h.id === dragId);
+
+  const handleDrop = async (targetHost) => {
+    if (!dragId || dragId === targetHost.id || !dragHost) return;
+
+    const sameGroup = dragHost.group === targetHost.group;
+
+    if (sameGroup) {
+      // Reorder within group
+      const group = grouped[dragHost.group];
+      const fromIdx = group.findIndex(h => h.id === dragId);
+      const toIdx   = group.findIndex(h => h.id === targetHost.id);
+      const reordered = [...group];
+      reordered.splice(fromIdx, 1);
+      reordered.splice(toIdx, 0, dragHost);
+      const updates = reordered.map((h, i) => ({ id: h.id, sort_order: i }));
+      onReorder(updates);
+    } else {
+      // Move to different group — update group + sort_order
+      const targetGroup = grouped[targetHost.group] || [];
+      const toIdx = targetGroup.findIndex(h => h.id === targetHost.id);
+      const newGroup = [...targetGroup];
+      newGroup.splice(toIdx, 0, dragHost);
+      const updates = newGroup.map((h, i) => ({
+        id: h.id,
+        sort_order: i,
+        group: targetHost.group,
+      }));
+      onReorder(updates, dragId, targetHost.group);
+    }
+
+    setDragId(null);
+    setOverId(null);
+    setOverGroup(null);
+  };
+
+  // Drop on empty group area
+  const handleDropOnGroup = async (groupName) => {
+    if (!dragId || !dragHost || dragHost.group === groupName) return;
+    const targetGroup = grouped[groupName] || [];
+    const updates = [{ id: dragId, sort_order: targetGroup.length, group: groupName }];
+    onReorder(updates, dragId, groupName);
+    setDragId(null);
+    setOverId(null);
+    setOverGroup(null);
+  };
+
+  return (
+    <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
+      {Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([group, ghosts]) => {
+        const anyOff = ghosts.some(h=>h.status==="offline"&&h.enabled!==false);
+        const allOn  = ghosts.every(h=>h.status==="online"||h.enabled===false);
+        const groupColor = anyOff ? C.red : allOn ? C.green : C.muted;
+        const isGroupOver = overGroup === group && dragHost?.group !== group;
+        return (
+          <div key={group}
+            onDragOver={e => { e.preventDefault(); setOverGroup(group); }}
+            onDrop={() => handleDropOnGroup(group)}
+            style={{
+              background: isGroupOver ? "#0A1A2A" : "transparent",
+              border: isGroupOver ? `2px dashed ${C.teal}` : "2px solid transparent",
+              borderRadius: 8, padding: isGroupOver ? 10 : 0,
+              transition: "all 0.15s",
+            }}>
+            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+              <div style={{ width:3, height:18, background:groupColor, borderRadius:2 }}/>
+              <span style={{ fontSize:11, fontWeight:700, color:groupColor,
+                letterSpacing:"0.1em", textTransform:"uppercase" }}>{group}</span>
+              <span style={{ fontSize:10, color:C.muted }}>
+                — {ghosts.filter(h=>h.status==="online").length}/{ghosts.length} online
+              </span>
+              <button onClick={() => onDeleteGroup(group)} title="Delete group"
+                style={{ marginLeft:"auto", background:"none", border:`1px solid ${C.red}44`,
+                  borderRadius:3, color:C.red, cursor:"pointer", fontSize:10,
+                  padding:"2px 8px", fontFamily:"inherit", opacity:0.7 }}>
+                🗑 Delete Group
+              </button>
+            </div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:12, minHeight:60 }}>
+              {ghosts.length === 0 && (
+                <div style={{ color:C.muted, fontSize:11, fontStyle:"italic",
+                  display:"flex", alignItems:"center", padding:"8px 4px" }}>
+                  Empty — drag hosts here
+                </div>
+              )}
+              {ghosts.map(host => (
+                <HostTile
+                  key={host.id}
+                  host={host}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onPing={onPing}
+                  pinging={pinging}
+                  acking={acking}
+                  onAck={onAck}
+                  onUnack={onUnack}
+                  isDragOver={overId === host.id}
+                  onDragStart={() => { setDragId(host.id); setOverGroup(null); }}
+                  onDragOver={() => { setOverId(host.id); setOverGroup(group); }}
+                  onDrop={() => handleDrop(host)}
+                  onDragEnd={() => { setDragId(null); setOverId(null); setOverGroup(null); }}
+                />
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -495,9 +862,14 @@ export default function App() {
   const [showSettings,setShowSettings]=useState(false);
   const [pinging,    setPinging]  = useState({});
   const [acking,     setAcking]   = useState({});
+  const [groupList,  setGroupList] = useState([]); // persisted group names including empty ones
+  const [siteName,   setSiteName]  = useState("");
+  const [bgColor,    setBgColor]   = useState("");
+  const bgColorRef = useRef(""); // tracks last user-set value so fetchAll won't overwrite it
+  const [theme,      setThemeState] = useState("dark");
   const intervalRef = useRef(null);
 
-  const fetchAll = useCallback(async () => {
+  const fetchHostsAndSummary = useCallback(async () => {
     try {
       const [hRes, sRes] = await Promise.all([
         fetch(`${API}/api/hosts`),
@@ -506,15 +878,72 @@ export default function App() {
       setHosts(await hRes.json());
       setSummary(await sRes.json());
     } catch{}
+  },[]);
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [hRes, sRes, cfgRes] = await Promise.all([
+        fetch(`${API}/api/hosts`),
+        fetch(`${API}/api/summary`),
+        fetch(`${API}/api/config`),
+      ]);
+      setHosts(await hRes.json());
+      setSummary(await sRes.json());
+      const cfgData = await cfgRes.json();
+      setSiteName(cfgData.network_name || "");
+      if (cfgData.theme) setThemeState(cfgData.theme);
+      // Only load bg_color from API on first load
+      if (cfgData.bg_color && !bgColorRef.current) {
+        bgColorRef.current = cfgData.bg_color;
+        setBgColor(cfgData.bg_color);
+      }
+    } catch{}
     setLoading(false);
   },[]);
 
   useEffect(()=>{
-    fetchAll();
-    // Poll every 10s so status stays live without a manual refresh
-    intervalRef.current = setInterval(fetchAll, 10000);
+    fetchAll(); // full load including config on startup
+    intervalRef.current = setInterval(fetchHostsAndSummary, 10000); // poll only hosts/summary
     return ()=>clearInterval(intervalRef.current);
-  },[fetchAll]);
+  },[fetchAll, fetchHostsAndSummary]);
+
+  const handleReorder = async (updates, movedId = null, newGroup = null) => {
+    // Optimistically update local state
+    setHosts(prev => prev.map(h => {
+      if (movedId && h.id === movedId && newGroup) {
+        return { ...h, group: newGroup };
+      }
+      const u = updates.find(x => x.id === h.id);
+      if (u) return { ...h, sort_order: u.sort_order ?? h.sort_order };
+      return h;
+    }));
+    // Always persist group change via PUT first
+    if (movedId && newGroup) {
+      await fetch(`${API}/api/hosts/${movedId}`, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ group: newGroup }),
+      });
+    }
+    // Then persist sort order
+    await fetch(`${API}/api/hosts/reorder`, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify(updates),
+    });
+    // Refresh to confirm persisted state
+    fetchAll();
+  };
+
+  const handleDeleteGroup = (groupName) => {
+    if (!window.confirm(`Delete group "${groupName}"? This cannot be undone.`)) return;
+    setGroupList(prev => prev.filter(g => g !== groupName));
+  };
+
+  const handleAddGroup = (groupName) => {
+    if (!groupName.trim()) return;
+    setGroupList(prev => prev.includes(groupName) ? prev : [...prev, groupName]);
+  };
 
   const handleManualPing = async (h) => {
     setPinging(p=>({...p,[h.id]:true}));
@@ -543,11 +972,24 @@ export default function App() {
     setAcking(a => ({...a, [h.id]: false}));
   };
 
-  const groups = [...new Set(hosts.map(h=>h.group||"Ungrouped"))].sort();
+  const groups = [...new Set([
+    ...groupList,
+    ...hosts.map(h=>h.group||"Ungrouped")
+  ])].sort();
   const groupNames = groups.filter(g=>g!=="Ungrouped");
+
+  // Sync groupList whenever hosts change — add any new groups from hosts
+  useEffect(() => {
+    const hostGroups = [...new Set(hosts.map(h => h.group||"Ungrouped"))];
+    setGroupList(prev => {
+      const merged = [...new Set([...prev, ...hostGroups])];
+      return merged;
+    });
+  }, [hosts]);
 
   // Group hosts for display
   const grouped = {};
+  groups.forEach(g => { grouped[g] = []; }); // include empty groups
   hosts.forEach(h=>{
     const g = h.group||"Ungrouped";
     if (!grouped[g]) grouped[g]=[];
@@ -556,17 +998,20 @@ export default function App() {
 
   const offlineCount = hosts.filter(h=>h.status==="offline"&&h.enabled!==false).length;
 
+  const themeValue = { ...(THEMES[theme] || THEMES.dark), ...ACCENT };
+
   return (
-    <div style={{ fontFamily:"'IBM Plex Mono',monospace", background:C.dark,
-      minHeight:"100vh", color:"#CBD5E1" }}>
+  <ThemeCtx.Provider value={themeValue}>
+    <div style={{ fontFamily:"'IBM Plex Mono',monospace", background: bgColor || themeValue.dark,
+      minHeight:"100vh", color:themeValue.bodyText, transition:"background 0.3s, color 0.3s" }}>
       <style>{`
         *{box-sizing:border-box;margin:0;padding:0}
         @keyframes spin{to{transform:rotate(360deg)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
         @keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
         ::-webkit-scrollbar{width:5px;height:5px}
-        ::-webkit-scrollbar-track{background:#0F1923}
-        ::-webkit-scrollbar-thumb{background:#1E293B;border-radius:3px}
+        ::-webkit-scrollbar-track{background:#050D18}
+        ::-webkit-scrollbar-thumb{background:#1A3A5C;border-radius:3px}
       `}</style>
 
       {/* Modals */}
@@ -575,44 +1020,77 @@ export default function App() {
           onClose={()=>{setShowAdd(false);setEditHost(null);}}
           onSave={()=>{setShowAdd(false);setEditHost(null);fetchAll();}}/>
       )}
-      {showSettings && <SettingsPanel onClose={()=>{setShowSettings(false);fetchAll();}}/>}
+      {showSettings && <SettingsPanel
+        onClose={()=>{setShowSettings(false);fetchHostsAndSummary();}}
+        onThemeChange={t => setThemeState(t)}
+        onNameChange={n => setSiteName(n)}
+        onBgChange={c => { bgColorRef.current = c; setBgColor(c); }}
+      />}
 
       {/* Header */}
-      <div style={{ background:C.navy, borderBottom:`3px solid ${C.teal}`,
-        padding:"0 28px", display:"flex", alignItems:"center", height:54, gap:16 }}>
-        <div style={{ display:"flex", alignItems:"center", gap:10 }}>
-          <div style={{ width:8, height:8, borderRadius:"50%", background:C.teal,
-            boxShadow:`0 0 8px ${C.teal}` }}/>
-          <span style={{ color:C.white, fontWeight:700, fontSize:12,
-            letterSpacing:"0.15em", textTransform:"uppercase" }}>Network Monitor</span>
+      <div style={{
+        background: themeValue.navy,
+        borderBottom:`3px solid ${hosts.some(h=>h.status==="offline"&&h.enabled!==false) ? ACCENT.red : ACCENT.green}`,
+        padding:"0 16px", display:"flex", alignItems:"center", height:54, gap:10,
+        transition:"border-color 0.4s, background 0.4s", overflow:"hidden",
+      }}>
+        <div style={{ display:"flex", alignItems:"center", gap:12 }}>
+          {/* Status light — green = all good, red = host(s) down */}
+          <div
+            title={hosts.some(h=>h.status==="offline"&&h.enabled!==false)
+              ? `${hosts.filter(h=>h.status==="offline"&&h.enabled!==false).length} host(s) down`
+              : "All systems online"}
+            style={{
+              width:36, height:36, borderRadius:"50%",
+              background: hosts.some(h=>h.status==="offline"&&h.enabled!==false)
+                ? `radial-gradient(circle at 35% 35%, ${themeValue.red}88, ${themeValue.red}22)`
+                : `radial-gradient(circle at 35% 35%, ${themeValue.green}88, ${themeValue.green}22)`,
+              border:`2px solid ${hosts.some(h=>h.status==="offline"&&h.enabled!==false) ? themeValue.red : themeValue.green}`,
+              boxShadow: hosts.some(h=>h.status==="offline"&&h.enabled!==false)
+                ? `0 0 14px ${themeValue.red}99, 0 0 4px ${themeValue.red}`
+                : `0 0 14px ${themeValue.green}99, 0 0 4px ${themeValue.green}`,
+              animation: hosts.some(h=>h.status==="offline"&&h.enabled!==false)
+                ? "pulse 1.5s ease-in-out infinite" : "none",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:18, transition:"all 0.4s",
+            }}
+          >🌐</div>
+          <div style={{ color:themeValue.white, fontWeight:700, fontSize:12,
+            letterSpacing:"0.2em", textTransform:"uppercase" }}>
+            {siteName || "Network Monitor"}
+          </div>
         </div>
         {/* Live pulse indicator */}
-        <div style={{ display:"flex", alignItems:"center", gap:6,
-          background:"#0A1018", border:`1px solid ${C.teal}33`,
-          borderRadius:20, padding:"3px 10px" }}>
-          <div style={{ width:6, height:6, borderRadius:"50%", background:C.teal,
-            animation:"pulse 2s ease-in-out infinite" }}/>
-          <span style={{ fontSize:10, color:C.teal, fontWeight:700 }}>Live — polling every 10s</span>
+        <div style={{ display:"flex", alignItems:"center", gap:6, flexShrink:0,
+          background:"#050D1888", border:`1px solid ${themeValue.teal}55`,
+          borderRadius:20, padding:"3px 12px" }}>
+          <div style={{ width:6, height:6, borderRadius:"50%", background:ACCENT.green,
+            animation:"pulse 2s ease-in-out infinite",
+            boxShadow:`0 0 6px ${ACCENT.green}` }}/>
+          <span style={{ fontSize:10, color:ACCENT.green, fontWeight:700,
+            letterSpacing:"0.08em" }}>LIVE</span>
         </div>
-        <div style={{ marginLeft:"auto", display:"flex", gap:10 }}>
-          <Btn onClick={()=>setShowSettings(true)} color="#1E293B" small>⚙ Settings</Btn>
-          <Btn onClick={()=>{setEditHost(null);setShowAdd(true);}} small>➕ Add Host</Btn>
+        <div style={{ marginLeft:"auto", display:"flex", gap:8, flexShrink:0 }}>
+          <Btn onClick={()=>setShowSettings(true)} color={themeValue.panel}
+            style={{ border:`1px solid ${themeValue.border}` }} small>⚙ Settings</Btn>
+          <Btn onClick={()=>{setEditHost(null);setShowAdd(true);}}
+            color={ACCENT.orange} small>➕ Add Host</Btn>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ background:"#121A27", borderBottom:`1px solid ${C.border}`,
+      <div style={{ background:themeValue.tabBar, borderBottom:`1px solid ${themeValue.border}`,
         display:"flex", padding:"0 28px", gap:2 }}>
         {TABS.map((t,i)=>(
           <button key={t} onClick={()=>setTab(i)} style={{
-            background:"transparent", color:tab===i?C.white:C.muted,
-            border:"none", borderBottom:tab===i?`2px solid ${C.teal}`:"2px solid transparent",
+            background:"transparent", color:tab===i?themeValue.white:themeValue.muted,
+            border:"none", borderBottom:tab===i?`2px solid ${themeValue.orange}`:"2px solid transparent",
             padding:"10px 20px", cursor:"pointer", fontSize:11, fontWeight:700,
             fontFamily:"inherit", letterSpacing:"0.08em", textTransform:"uppercase",
           }}>
             {t}
             {t==="Hosts" && offlineCount>0 &&
-              <span style={{ marginLeft:6, background:C.red, color:C.white,
+              <span style={{ marginLeft:6, background:themeValue.orange, color:themeValue.white,
                 borderRadius:10, padding:"1px 6px", fontSize:9 }}>{offlineCount}</span>}
           </button>
         ))}
@@ -621,8 +1099,8 @@ export default function App() {
       <div style={{ padding:"24px 28px" }}>
         {loading && (
           <div style={{ display:"flex", alignItems:"center", justifyContent:"center", height:"50vh", flexDirection:"column", gap:14 }}>
-            <div style={{ width:36, height:36, border:`3px solid ${C.border}`, borderTop:`3px solid ${C.teal}`, borderRadius:"50%", animation:"spin 1s linear infinite" }}/>
-            <div style={{ color:C.muted, fontSize:12 }}>Connecting to backend…</div>
+            <div style={{ width:36, height:36, border:`3px solid ${themeValue.border}`, borderTop:`3px solid ${themeValue.teal}`, borderRadius:"50%", animation:"spin 1s linear infinite" }}/>
+            <div style={{ color:themeValue.muted, fontSize:12 }}>Connecting to backend…</div>
           </div>
         )}
 
@@ -632,11 +1110,11 @@ export default function App() {
           {/* ════ DASHBOARD ════ */}
           {tab===0 && <>
             {/* KPIs */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:14, marginBottom:24 }}>
-              <KPI label="Total Hosts"  value={summary?.total||0}   color={C.teal}   icon="🖥" sub={`${groups.length} group${groups.length!==1?"s":""}`}/>
-              <KPI label="Online"       value={summary?.online||0}  color={C.green}  icon="🟢" sub="responding"/>
-              <KPI label="Offline"      value={summary?.offline||0} color={C.red}    icon="🔴" sub="not responding"/>
-              <KPI label="Unknown"      value={summary?.unknown||0} color={C.muted}  icon="⚪" sub="not yet checked"/>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:14, marginBottom:24 }}>
+              <KPI label="Total Hosts"  value={summary?.total||0}   color={themeValue.teal}   icon="🖥" sub={`${groups.length} group${groups.length!==1?"s":""}`}/>
+              <KPI label="Online"       value={summary?.online||0}  color={themeValue.green}  icon="🟢" sub="responding"/>
+              <KPI label="Offline"      value={summary?.offline||0} color={themeValue.red}    icon="🔴" sub="not responding"/>
+              <KPI label="Unknown"      value={summary?.unknown||0} color={themeValue.muted}  icon="⚪" sub="not yet checked"/>
             </div>
 
             {/* Group cards */}
@@ -645,24 +1123,24 @@ export default function App() {
                 {Object.entries(summary?.groups||{}).map(([g,s])=>{
                   const allOn = s.offline===0&&s.unknown===0;
                   const anyOff = s.offline>0;
-                  const border = anyOff?C.red:allOn?C.green:C.muted;
+                  const border = anyOff?themeValue.red:allOn?themeValue.green:themeValue.muted;
                   return (
-                    <div key={g} style={{ background:C.panel, border:`1px solid ${border}44`,
+                    <div key={g} style={{ background:themeValue.panel, border:`1px solid ${border}44`,
                       borderTop:`3px solid ${border}`, borderRadius:6, padding:"14px 16px" }}>
-                      <div style={{ fontSize:11, fontWeight:700, color:C.text,
+                      <div style={{ fontSize:11, fontWeight:700, color:themeValue.text,
                         letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:10 }}>{g}</div>
                       <div style={{ display:"flex", gap:10 }}>
                         <div style={{ textAlign:"center" }}>
-                          <div style={{ fontSize:22, fontWeight:800, color:C.green }}>{s.online}</div>
-                          <div style={{ fontSize:9, color:C.muted }}>ONLINE</div>
+                          <div style={{ fontSize:22, fontWeight:800, color:themeValue.green }}>{s.online}</div>
+                          <div style={{ fontSize:9, color:themeValue.muted }}>ONLINE</div>
                         </div>
                         <div style={{ textAlign:"center" }}>
-                          <div style={{ fontSize:22, fontWeight:800, color:s.offline>0?C.red:"#334155" }}>{s.offline}</div>
-                          <div style={{ fontSize:9, color:C.muted }}>OFFLINE</div>
+                          <div style={{ fontSize:22, fontWeight:800, color:s.offline>0?themeValue.red:themeValue.border }}>{s.offline}</div>
+                          <div style={{ fontSize:9, color:themeValue.muted }}>OFFLINE</div>
                         </div>
                         <div style={{ textAlign:"center" }}>
-                          <div style={{ fontSize:22, fontWeight:800, color:C.muted }}>{s.total}</div>
-                          <div style={{ fontSize:9, color:C.muted }}>TOTAL</div>
+                          <div style={{ fontSize:22, fontWeight:800, color:themeValue.muted }}>{s.total}</div>
+                          <div style={{ fontSize:9, color:themeValue.muted }}>TOTAL</div>
                         </div>
                       </div>
                     </div>
@@ -671,40 +1149,41 @@ export default function App() {
               </div>
             )}
 
-            {/* All hosts compact view */}
+            {/* Icon grid */}
             <Panel>
               <SH title="All Hosts" action={
-                <Btn small onClick={fetchAll}>↻ Refresh</Btn>
+                <div style={{ display:"flex", gap:8, alignItems:"center" }}>
+                  <Btn small onClick={fetchAll}>↻ Refresh</Btn>
+                  <Btn small color={themeValue.blue} onClick={() => {
+                    const name = window.prompt("New group name:");
+                    if (name?.trim()) handleAddGroup(name.trim());
+                  }}>＋ Group</Btn>
+                </div>
               }/>
               {hosts.length===0?(
-                <div style={{ padding:40, textAlign:"center", color:C.muted }}>
+                <div style={{ padding:40, textAlign:"center", color:themeValue.muted }}>
                   <div style={{ fontSize:36, marginBottom:12 }}>🖥</div>
-                  <div style={{ fontSize:13, color:C.text, marginBottom:8 }}>No hosts added yet</div>
+                  <div style={{ fontSize:13, color:themeValue.text, marginBottom:8 }}>No hosts added yet</div>
                   <Btn onClick={()=>setShowAdd(true)}>➕ Add First Host</Btn>
                 </div>
               ):(
-                <div style={{ overflowX:"auto" }}>
-                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
-                    <thead><tr>
-                      {["","Host","IP","Group","Type","Status","Last Seen","Connectivity"].map(h=><TH key={h}>{h}</TH>)}
-                    </tr></thead>
-                    <tbody>
-                      {hosts.map((h,i)=>(
-                        <tr key={h.id} style={{ borderBottom:`1px solid ${C.border}`,
-                          background:i%2===0?C.panel:"#12192A",
-                          opacity:h.enabled===false?0.4:1 }}>
-                          <TD style={{ fontSize:16, paddingRight:4 }} title={deviceLabel(h.device_type)}>{deviceIcon(h.device_type)}</TD>
-                          <TD style={{ color:C.white, fontWeight:700 }}>{h.name}</TD>
-                          <TD style={{ color:C.teal, fontFamily:"monospace" }}>{h.ip}</TD>
-                          <TD style={{ color:C.muted }}>{h.group||"Ungrouped"}</TD>
-                          <TD style={{ color:C.muted }}>{deviceLabel(h.device_type||"other")}</TD>
-                          <td style={{ padding:"8px 14px" }}><StatusBadge s={h.status} acked={h.acknowledged}/></td>
-                          <TD style={{ color:C.muted }}>{relTime(h.last_seen)}</TD>
-                          <td style={{ padding:"8px 14px" }}><ConnBar hostId={h.id}/></td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                <div style={{ padding:20 }}>
+                  <div style={{ fontSize:10, color:themeValue.muted, marginBottom:16 }}>
+                    Drag tiles to reorder or move between groups.
+                  </div>
+                  <IconGrid
+                    hosts={hosts}
+                    grouped={grouped}
+                    onEdit={setEditHost}
+                    onDelete={handleDelete}
+                    onPing={handleManualPing}
+                    pinging={pinging}
+                    acking={acking}
+                    onAck={handleAck}
+                    onUnack={handleUnack}
+                    onReorder={handleReorder}
+                    onDeleteGroup={handleDeleteGroup}
+                  />
                 </div>
               )}
             </Panel>
@@ -719,9 +1198,9 @@ export default function App() {
 
               {hosts.length===0?(
                 <Panel>
-                  <div style={{ padding:48, textAlign:"center", color:C.muted }}>
+                  <div style={{ padding:48, textAlign:"center", color:themeValue.muted }}>
                     <div style={{ fontSize:40, marginBottom:12 }}>🖥</div>
-                    <div style={{ fontSize:14, color:C.text, marginBottom:8 }}>No hosts configured</div>
+                    <div style={{ fontSize:14, color:themeValue.text, marginBottom:8 }}>No hosts configured</div>
                     <div style={{ fontSize:12, marginBottom:20 }}>Add a host to start monitoring.</div>
                     <Btn onClick={()=>setShowAdd(true)}>➕ Add First Host</Btn>
                   </div>
@@ -730,7 +1209,7 @@ export default function App() {
                 Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([group, ghosts])=>(
                   <Panel key={group}>
                     <SH title={`${group} — ${ghosts.length} host${ghosts.length!==1?"s":""}`}
-                      color={ghosts.some(h=>h.status==="offline")?C.red:C.teal}/>
+                      color={ghosts.some(h=>h.status==="offline")?themeValue.red:themeValue.teal}/>
                     <div style={{ overflowX:"auto" }}>
                       <table style={{ width:"100%", borderCollapse:"collapse", fontSize:11 }}>
                         <thead><tr>
@@ -738,54 +1217,54 @@ export default function App() {
                         </tr></thead>
                         <tbody>
                           {ghosts.map((h,i)=>(
-                            <tr key={h.id} style={{ borderBottom:`1px solid ${C.border}`,
-                              background:i%2===0?C.panel:"#12192A",
+                            <tr key={h.id} style={{ borderBottom:`1px solid ${themeValue.border}`,
+                              background:i%2===0?themeValue.panel:"#12192A",
                               opacity:h.enabled===false?0.45:1,
                               animation:"fadeIn 0.2s ease" }}>
                               <TD style={{ fontSize:16, paddingRight:4 }} title={deviceLabel(h.device_type)}>{deviceIcon(h.device_type)}</TD>
-                              <TD style={{ color:C.white, fontWeight:700 }}>
+                              <TD style={{ color:themeValue.white, fontWeight:700 }}>
                                 {h.name}
-                                {h.enabled===false&&<span style={{color:C.muted,fontSize:9,marginLeft:6}}>(disabled)</span>}
+                                {h.enabled===false&&<span style={{color:themeValue.muted,fontSize:9,marginLeft:6}}>(disabled)</span>}
                               </TD>
-                              <TD style={{ color:C.teal, fontFamily:"monospace" }}>{h.ip}</TD>
-                              <TD style={{ color:C.muted }}>{deviceLabel(h.device_type||"other")}</TD>
+                              <TD style={{ color:themeValue.teal, fontFamily:"monospace" }}>{h.ip}</TD>
+                              <TD style={{ color:themeValue.muted }}>{deviceLabel(h.device_type||"other")}</TD>
                               <td style={{ padding:"8px 14px" }}><StatusBadge s={h.status} acked={h.acknowledged}/></td>
                               <td style={{ padding:"8px 14px" }}>
-                                <span style={{ color:C.text }} title={fmtDate(h.last_seen)}>
+                                <span style={{ color:themeValue.text }} title={fmtDate(h.last_seen)}>
                                   {relTime(h.last_seen)}
                                 </span>
                               </td>
                               <td style={{ padding:"8px 14px" }}>
-                                <span style={{ color:C.muted, fontSize:10 }} title={fmtDate(h.last_check)}>
+                                <span style={{ color:themeValue.muted, fontSize:10 }} title={fmtDate(h.last_check)}>
                                   {relTime(h.last_check)}
                                 </span>
                               </td>
                               <td style={{ padding:"8px 14px" }}><ConnBar hostId={h.id}/></td>
                               <td style={{ padding:"8px 14px" }}>
                                 <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
-                                  <Btn small color={C.teal}
+                                  <Btn small color={themeValue.teal}
                                     disabled={pinging[h.id]}
                                     onClick={()=>handleManualPing(h)}>
                                     {pinging[h.id]?"…":"Ping"}
                                   </Btn>
                                   {h.status==="offline" && !h.acknowledged && (
-                                    <Btn small color={C.orange}
+                                    <Btn small color={themeValue.orange}
                                       disabled={acking[h.id]}
                                       onClick={()=>handleAck(h)}
-                                      style={{ border:`1px solid ${C.orange}` }}>
+                                      style={{ border:`1px solid ${themeValue.orange}` }}>
                                       {acking[h.id]?"…":"✓ Ack"}
                                     </Btn>
                                   )}
                                   {h.status==="offline" && h.acknowledged && (
-                                    <Btn small color="#334155"
+                                    <Btn small color={C.border}
                                       disabled={acking[h.id]}
                                       onClick={()=>handleUnack(h)}
                                       style={{ border:`1px solid #475569` }}>
                                       {acking[h.id]?"…":"✕ Unack"}
                                     </Btn>
                                   )}
-                                  <Btn small color={C.blue} onClick={()=>setEditHost(h)}>Edit</Btn>
-                                  <Btn small color={C.red} onClick={()=>handleDelete(h)}>Delete</Btn>
+                                  <Btn small color={themeValue.blue} onClick={()=>setEditHost(h)}>Edit</Btn>
+                                  <Btn small color={themeValue.red} onClick={()=>handleDelete(h)}>Delete</Btn>
                                 </div>
                               </td>
                             </tr>
@@ -805,7 +1284,7 @@ export default function App() {
               <Panel>
                 <SH title="Settings"/>
                 <div style={{ padding:24 }}>
-                  <div style={{ color:C.text, fontSize:12, lineHeight:1.8 }}>
+                  <div style={{ color:themeValue.text, fontSize:12, lineHeight:1.8 }}>
                     Configure the ping interval and SMTP email alerts from the settings panel.
                   </div>
                   <div style={{ marginTop:16 }}>
@@ -818,5 +1297,6 @@ export default function App() {
         </>}
       </div>
     </div>
+  </ThemeCtx.Provider>
   );
 }

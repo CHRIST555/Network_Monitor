@@ -70,6 +70,8 @@ DEFAULT_CONFIG = {
     "alert_cooldown":       300,    # (legacy — kept for compatibility)
     "reminder_enabled":     True,   # send repeat alerts while host stays down
     "reminder_interval":    1800,   # seconds between reminder alerts (default 30m)
+    "network_name":         "",     # custom header title
+    "bg_color":             "",     # custom background color (hex)
 }
 
 def load_config():
@@ -491,7 +493,7 @@ def update_config():
     fields = [
         "ping_interval", "smtp_enabled", "smtp_host", "smtp_port",
         "smtp_user", "smtp_from", "smtp_to", "smtp_tls", "alert_cooldown",
-        "reminder_enabled", "reminder_interval",
+        "reminder_enabled", "reminder_interval", "network_name", "bg_color",
     ]
     for f in fields:
         if f in body:
