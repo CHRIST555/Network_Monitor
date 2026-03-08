@@ -732,7 +732,7 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
   );
 }
 
-function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, onAck, onUnack, onReorder, onDeleteGroup }) {
+function IconGrid({ hosts, grouped, groupOrder, onEdit, onDelete, onPing, pinging, acking, onAck, onUnack, onReorder, onDeleteGroup, onMoveGroup }) {
   const C = useC();
   const [dragId,      setDragId]      = useState(null);
   const [overId,      setOverId]      = useState(null);
@@ -746,7 +746,6 @@ function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, o
     const sameGroup = dragHost.group === targetHost.group;
 
     if (sameGroup) {
-      // Reorder within group
       const group = grouped[dragHost.group];
       const fromIdx = group.findIndex(h => h.id === dragId);
       const toIdx   = group.findIndex(h => h.id === targetHost.id);
@@ -756,7 +755,6 @@ function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, o
       const updates = reordered.map((h, i) => ({ id: h.id, sort_order: i }));
       onReorder(updates);
     } else {
-      // Move to different group — update group + sort_order
       const targetGroup = grouped[targetHost.group] || [];
       const toIdx = targetGroup.findIndex(h => h.id === targetHost.id);
       const newGroup = [...targetGroup];
@@ -774,7 +772,6 @@ function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, o
     setOverGroup(null);
   };
 
-  // Drop on empty group area
   const handleDropOnGroup = async (groupName) => {
     if (!dragId || !dragHost || dragHost.group === groupName) return;
     const targetGroup = grouped[groupName] || [];
@@ -785,13 +782,28 @@ function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, o
     setOverGroup(null);
   };
 
+  // Use passed groupOrder, fall back to alphabetical
+  const orderedGroups = groupOrder
+    ? groupOrder.filter(g => grouped[g] !== undefined)
+    : Object.keys(grouped).sort();
+
+  const btnStyle = (disabled) => ({
+    background:"none", border:`1px solid ${C.border}`, borderRadius:3,
+    color: disabled ? C.border : C.muted, cursor: disabled ? "default" : "pointer",
+    fontSize:10, padding:"1px 6px", fontFamily:"inherit", lineHeight:1.4,
+    opacity: disabled ? 0.3 : 1, transition:"all 0.15s",
+  });
+
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:24 }}>
-      {Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([group, ghosts]) => {
+      {orderedGroups.map((group, idx) => {
+        const ghosts = grouped[group] || [];
         const anyOff = ghosts.some(h=>h.status==="offline"&&h.enabled!==false);
         const allOn  = ghosts.every(h=>h.status==="online"||h.enabled===false);
         const groupColor = anyOff ? C.red : allOn ? C.green : C.muted;
         const isGroupOver = overGroup === group && dragHost?.group !== group;
+        const isFirst = idx === 0;
+        const isLast  = idx === orderedGroups.length - 1;
         return (
           <div key={group}
             onDragOver={e => { e.preventDefault(); setOverGroup(group); }}
@@ -802,7 +814,14 @@ function IconGrid({ hosts, grouped, onEdit, onDelete, onPing, pinging, acking, o
               borderRadius: 8, padding: isGroupOver ? 10 : 0,
               transition: "all 0.15s",
             }}>
-            <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:12 }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:12 }}>
+              {/* Up / Down buttons */}
+              <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+                <button onClick={() => onMoveGroup(group, -1)} disabled={isFirst}
+                  title="Move group up" style={btnStyle(isFirst)}>▲</button>
+                <button onClick={() => onMoveGroup(group, +1)} disabled={isLast}
+                  title="Move group down" style={btnStyle(isLast)}>▼</button>
+              </div>
               <div style={{ width:3, height:18, background:groupColor, borderRadius:2 }}/>
               <span style={{ fontSize:11, fontWeight:700, color:groupColor,
                 letterSpacing:"0.1em", textTransform:"uppercase" }}>{group}</span>
@@ -938,6 +957,19 @@ export default function App() {
   const handleDeleteGroup = (groupName) => {
     if (!window.confirm(`Delete group "${groupName}"? This cannot be undone.`)) return;
     setGroupList(prev => prev.filter(g => g !== groupName));
+  };
+
+  const handleMoveGroup = (groupName, direction) => {
+    setGroupList(prev => {
+      const idx = prev.indexOf(groupName);
+      if (idx < 0) return prev;
+      const newIdx = idx + direction;
+      if (newIdx < 0 || newIdx >= prev.length) return prev;
+      const next = [...prev];
+      next.splice(idx, 1);
+      next.splice(newIdx, 0, groupName);
+      return next;
+    });
   };
 
   const handleAddGroup = (groupName) => {
@@ -1174,6 +1206,7 @@ export default function App() {
                   <IconGrid
                     hosts={hosts}
                     grouped={grouped}
+                    groupOrder={groupList}
                     onEdit={setEditHost}
                     onDelete={handleDelete}
                     onPing={handleManualPing}
@@ -1183,6 +1216,7 @@ export default function App() {
                     onUnack={handleUnack}
                     onReorder={handleReorder}
                     onDeleteGroup={handleDeleteGroup}
+                    onMoveGroup={handleMoveGroup}
                   />
                 </div>
               )}
