@@ -431,8 +431,13 @@ def ping_loop():
 
                 # ── Host still offline → send reminder if interval elapsed ──
                 elif new_status == "offline" and prev_status == "offline":
-                    # Skip reminders if an operator has acknowledged this outage
-                    if host_state[hid].get("acknowledged"):
+                    # Read ack from disk to stay in sync across workers
+                    disk_hosts = load_hosts()
+                    disk_host  = next((x for x in disk_hosts if x["id"] == hid), {})
+                    is_acked   = disk_host.get("acknowledged", host_state[hid].get("acknowledged", False))
+                    # Sync memory
+                    host_state[hid]["acknowledged"] = is_acked
+                    if is_acked:
                         pass  # silenced — no reminder sent
                     else:
                         reminder_enabled  = cfg.get("reminder_enabled", True)
@@ -577,6 +582,10 @@ def list_hosts():
         with state_lock:
             _init_state(hid)
             s = host_state[hid]
+            # Acknowledged persisted on disk takes priority over in-memory
+            acked = h.get("acknowledged", s["acknowledged"])
+            if acked != s["acknowledged"]:
+                s["acknowledged"] = acked  # sync memory from disk
             result.append({
                 **h,
                 "status":       s["status"],
@@ -584,8 +593,8 @@ def list_hosts():
                 "last_seen":    s["last_seen"],
                 "last_check":   s["last_check"],
                 "uptime_pct":   _uptime_pct(hid),
-                "acknowledged": s["acknowledged"],
-                "ack_at":       s["ack_at"],
+                "acknowledged": acked,
+                "ack_at":       h.get("ack_at", s["ack_at"]),
             })
     return jsonify(result)
 
@@ -675,6 +684,14 @@ def acknowledge_host(host_id):
     hosts = load_hosts()
     if not any(h["id"] == host_id for h in hosts):
         return jsonify({"error": "Host not found"}), 404
+    # Persist to disk so all workers see it
+    updated = []
+    for h in hosts:
+        if h["id"] == host_id:
+            h = {**h, "acknowledged": True, "ack_at": time.time()}
+        updated.append(h)
+    save_hosts(updated)
+    # Also update in-memory state
     with state_lock:
         _init_state(host_id)
         host_state[host_id]["acknowledged"] = True
@@ -689,11 +706,19 @@ def unacknowledge_host(host_id):
     hosts = load_hosts()
     if not any(h["id"] == host_id for h in hosts):
         return jsonify({"error": "Host not found"}), 404
+    # Persist to disk so all workers see it
+    updated = []
+    for h in hosts:
+        if h["id"] == host_id:
+            h = {**h, "acknowledged": False, "ack_at": None}
+        updated.append(h)
+    save_hosts(updated)
+    # Also update in-memory state
     with state_lock:
         _init_state(host_id)
         host_state[host_id]["acknowledged"]     = False
         host_state[host_id]["ack_at"]           = None
-        host_state[host_id]["reminder_sent_at"] = None  # reset so next reminder fires promptly
+        host_state[host_id]["reminder_sent_at"] = None
     print(f"[ACK] Host {host_id} unacknowledged — reminders re-enabled")
     return jsonify({"acknowledged": False, "host_id": host_id})
 
