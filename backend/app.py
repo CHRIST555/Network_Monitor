@@ -515,9 +515,17 @@ def update_config():
         "smtp_user", "smtp_from", "smtp_to", "smtp_tls", "alert_cooldown",
         "reminder_enabled", "reminder_interval", "network_name", "bg_color",
     ]
+    bool_fields = {"smtp_enabled", "smtp_tls", "reminder_enabled"}
     for f in fields:
         if f in body:
-            cfg[f] = body[f]
+            val = body[f]
+            # Coerce to proper bool — frontend may send string "false"/"true"
+            if f in bool_fields:
+                if isinstance(val, str):
+                    val = val.lower() == "true"
+                else:
+                    val = bool(val)
+            cfg[f] = val
 
     # Only update password if a real value was provided
     if body.get("smtp_password") and body["smtp_password"] != "••••••••":
