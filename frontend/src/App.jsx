@@ -74,10 +74,16 @@ const Badge = ({ label, color, bg }) => (
 
 const statusColor = s => s==="online"?ACCENT.green:s==="offline"?ACCENT.red:"#64748B";
 const statusBg    = s => s==="online"?`${ACCENT.green}18`:s==="offline"?`${ACCENT.red}18`:"#64748B18";
-const statusLabel = s => s==="online"?"● Online":s==="offline"?"● Offline":"● Unknown";
+const statusLabel = s => s==="online" ? "Online" : s==="offline" ? "Offline" : "Unknown";
 const StatusBadge = ({ s, acked }) => (
   <span style={{ display:"flex", alignItems:"center", gap:5 }}>
-    <Badge label={statusLabel(s)} color={statusColor(s)} bg={statusBg(s)} />
+    <span style={{ display:"flex", alignItems:"center", gap:4, background:statusBg(s),
+      color:statusColor(s), padding:"2px 8px", borderRadius:3,
+      fontWeight:700, fontSize:10, border:`1px solid ${statusColor(s)}44` }}>
+      <span style={{ width:6, height:6, borderRadius:"50%", background:statusColor(s),
+        boxShadow:`0 0 4px ${statusColor(s)}`, display:"inline-block", flexShrink:0 }}/>
+      {statusLabel(s)}
+    </span>
     {acked && <Badge label="✓ Ack'd" color={ACCENT.orange} bg={`${ACCENT.orange}18`}/>}
   </span>
 );
@@ -681,9 +687,12 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
       {/* Status badge */}
       <div style={{ fontSize: 9, fontWeight: 700, color: glowColor,
         background: s==="online"?"#0A1A0A":s==="offline"?"#1A0505":C.dark,
-        border: `1px solid ${glowColor}44`, borderRadius: 3, padding: "2px 7px" }}>
-        {s==="online" ? "● Online" : s==="offline" ? "● Offline" : "● Unknown"}
-        {host.acknowledged && <span style={{ color: C.orange, marginLeft: 4 }}>✓</span>}
+        border: `1px solid ${glowColor}44`, borderRadius: 3, padding: "2px 7px",
+        display:"flex", alignItems:"center", gap:4 }}>
+        <span style={{ width:6, height:6, borderRadius:"50%", background:glowColor,
+          boxShadow:`0 0 4px ${glowColor}`, display:"inline-block", flexShrink:0 }}/>
+        {s==="online" ? "Online" : s==="offline" ? "Offline" : "Unknown"}
+        {host.acknowledged && <span style={{ color: C.orange, marginLeft: 2 }}>✓</span>}
       </div>
 
       {/* Action buttons */}
@@ -998,14 +1007,15 @@ export default function App() {
   const handleAck = async (h) => {
     setAcking(a => ({...a, [h.id]: true}));
     await fetch(`${API}/api/hosts/${h.id}/acknowledge`, {method:"POST"});
-    await fetchHostsAndSummary();
+    // Optimistically update local host state instead of full re-fetch
+    setHosts(prev => prev.map(x => x.id === h.id ? {...x, acknowledged: true} : x));
     setAcking(a => ({...a, [h.id]: false}));
   };
 
   const handleUnack = async (h) => {
     setAcking(a => ({...a, [h.id]: true}));
     await fetch(`${API}/api/hosts/${h.id}/unacknowledge`, {method:"POST"});
-    await fetchHostsAndSummary();
+    setHosts(prev => prev.map(x => x.id === h.id ? {...x, acknowledged: false} : x));
     setAcking(a => ({...a, [h.id]: false}));
   };
 
