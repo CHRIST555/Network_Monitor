@@ -310,7 +310,11 @@ def _build_plain_email(host: dict, status: str, now_str: str,
 
 
 def _send_mail(cfg: dict, subject: str, html_body: str, plain_body: str):
-    """Shared SMTP send logic."""
+    """Shared SMTP send logic.
+    Port 25  -> plain SMTP, no auth required
+    Port 465 -> SMTP_SSL
+    Port 587 -> SMTP + STARTTLS (default)
+    """
     recipients = [r.strip() for r in cfg["smtp_to"].split(",") if r.strip()]
     msg            = MIMEMultipart("alternative")
     msg["Subject"] = subject
@@ -318,15 +322,27 @@ def _send_mail(cfg: dict, subject: str, html_body: str, plain_body: str):
     msg["To"]      = ", ".join(recipients)
     msg.attach(MIMEText(plain_body, "plain"))
     msg.attach(MIMEText(html_body,  "html"))
-    port = int(cfg.get("smtp_port", 587))
-    if cfg.get("smtp_tls", True):
+    port     = int(cfg.get("smtp_port", 587))
+    user     = cfg.get("smtp_user", "").strip()
+    password = cfg.get("smtp_password", "").strip()
+
+    if port == 465:
+        # Implicit SSL
+        with smtplib.SMTP_SSL(cfg["smtp_host"], port, timeout=10) as s:
+            if user:
+                s.login(user, password)
+            s.sendmail(cfg["smtp_from"], recipients, msg.as_string())
+    elif port == 25:
+        # Plain SMTP - no TLS, no auth
         with smtplib.SMTP(cfg["smtp_host"], port, timeout=10) as s:
-            s.starttls()
-            s.login(cfg["smtp_user"], cfg["smtp_password"])
             s.sendmail(cfg["smtp_from"], recipients, msg.as_string())
     else:
-        with smtplib.SMTP_SSL(cfg["smtp_host"], port, timeout=10) as s:
-            s.login(cfg["smtp_user"], cfg["smtp_password"])
+        # Default: STARTTLS (port 587 or any other)
+        with smtplib.SMTP(cfg["smtp_host"], port, timeout=10) as s:
+            if cfg.get("smtp_tls", True):
+                s.starttls()
+            if user:
+                s.login(user, password)
             s.sendmail(cfg["smtp_from"], recipients, msg.as_string())
 
 
@@ -334,7 +350,11 @@ def send_alert(host: dict, status: str, offline_duration=None):
     cfg = load_config()
     if not cfg.get("smtp_enabled"):
         return
-    required = ["smtp_host", "smtp_user", "smtp_password", "smtp_from", "smtp_to"]
+    port = int(cfg.get("smtp_port", 587))
+    if port == 25:
+        required = ["smtp_host", "smtp_from", "smtp_to"]  # no auth on port 25
+    else:
+        required = ["smtp_host", "smtp_user", "smtp_password", "smtp_from", "smtp_to"]
     if any(not cfg.get(f) for f in required):
         return
 
