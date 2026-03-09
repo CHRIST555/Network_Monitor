@@ -84,7 +84,7 @@ const StatusBadge = ({ s, acked }) => (
         boxShadow:`0 0 4px ${statusColor(s)}`, display:"inline-block", flexShrink:0 }}/>
       {statusLabel(s)}
     </span>
-    {acked && <Badge label="✓ Ack'd" color={ACCENT.orange} bg={`${ACCENT.orange}18`}/>}
+    {acked && <Badge label="Ackd" color={ACCENT.orange} bg={`${ACCENT.orange}18`}/>}
   </span>
 );
 
@@ -105,11 +105,12 @@ const SH = ({ title, color, action }) => {
   );
 };
 
-const KPI = ({ label, value, color, icon, sub }) => {
+const KPI = ({ label, value, color, sub }) => {
   const C = useC();
   return (
     <div style={{ background:C.panel, border:`1px solid ${C.border}`, borderTop:`3px solid ${color}`, borderRadius:6, padding:"14px 16px" }}>
-      <div style={{ fontSize:22, marginBottom:4 }}>{icon}</div>
+      <div style={{ width:14, height:14, borderRadius:"50%", background:color,
+        boxShadow:`0 0 6px ${color}`, marginBottom:8 }}/>
       <div style={{ fontSize:28, fontWeight:800, color, lineHeight:1 }}>{value}</div>
       {sub && <div style={{ fontSize:10, color:C.muted, marginTop:3 }}>{sub}</div>}
       <div style={{ fontSize:10, color:C.muted, marginTop:6, letterSpacing:"0.1em", textTransform:"uppercase" }}>{label}</div>
@@ -242,7 +243,7 @@ function HostModal({ host, groups, onClose, onSave }) {
         padding:28, width:480, maxWidth:"95vw" }}>
         <div style={{ fontSize:14, fontWeight:700, color:C.white, marginBottom:20,
           borderBottom:`1px solid ${C.border}`, paddingBottom:12 }}>
-          {editing ? "✏ Edit Host" : "➕ Add Host"}
+          {editing ? "Edit Edit Host" : "➕ Add Host"}
         </div>
         <div style={{ display:"flex", flexDirection:"column", gap:14 }}>
           <Field label="Host Name" value={form.name} onChange={set("name")}
@@ -590,7 +591,7 @@ function DownBanner({ hosts, onAck, onUnack }) {
                 fontFamily:"inherit", fontSize:10, fontWeight:700,
                 transition:"background 0.15s",
               }} title="Acknowledge — silence reminders until host recovers">
-                ✓ Ack
+                Ack
               </button>
             </div>
           ))}
@@ -604,7 +605,7 @@ function DownBanner({ hosts, onAck, onUnack }) {
             <div key={h.id} style={{ display:"flex", alignItems:"center", gap:0,
               background:`${ACCENT.orange}15`, border:`1px solid ${C.orange}33`, borderRadius:5,
               overflow:"hidden", opacity:0.75 }}>
-              <span style={{ padding:"5px 8px", fontSize:10, color:C.orange }}>✓</span>
+              <span style={{ padding:"5px 8px", fontSize:10, color:C.orange }}>Ackd</span>
               <span style={{ padding:"5px 10px 5px 0", fontSize:11, fontWeight:600, color:C.muted }}>
                 {h.name} — {h.ip}
               </span>
@@ -613,7 +614,7 @@ function DownBanner({ hosts, onAck, onUnack }) {
                 color:C.muted, cursor:"pointer", padding:"5px 10px",
                 fontFamily:"inherit", fontSize:9, fontWeight:700,
               }} title="Remove acknowledgement — re-enable reminders">
-                ✕
+                x
               </button>
             </div>
           ))}
@@ -692,7 +693,7 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
         <span style={{ width:6, height:6, borderRadius:"50%", background:glowColor,
           boxShadow:`0 0 4px ${glowColor}`, display:"inline-block", flexShrink:0 }}/>
         {s==="online" ? "Online" : s==="offline" ? "Offline" : "Unknown"}
-        {host.acknowledged && <span style={{ color: C.orange, marginLeft: 2 }}>✓</span>}
+        {host.acknowledged && <span style={{ color: C.orange, marginLeft: 2 }}>Ackd</span>}
       </div>
 
       {/* Action buttons */}
@@ -710,7 +711,7 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
             style={{ background:"#1A0A00", border:`1px solid ${C.orange}44`, borderRadius:3,
               color: C.orange, cursor:"pointer", fontSize:9, padding:"2px 7px",
               fontFamily:"inherit", fontWeight:700 }}>
-            {acking[host.id]?"…":"✓"}
+            {acking[host.id]?"…":"v"}
           </button>
         )}
         {host.status==="offline" && host.acknowledged && (
@@ -719,7 +720,7 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
             style={{ background:`${ACCENT.orange}15`, border:`1px solid ${C.muted}33`, borderRadius:3,
               color: C.muted, cursor:"pointer", fontSize:9, padding:"2px 7px",
               fontFamily:"inherit", fontWeight:700 }}>
-            {acking[host.id]?"…":"✕"}
+            {acking[host.id]?"…":"x"}
           </button>
         )}
         <button onClick={() => onEdit(host)}
@@ -727,14 +728,14 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
           style={{ background:C.subheader, border:`1px solid ${C.border}`, borderRadius:3,
             color: C.blue, cursor:"pointer", fontSize:9, padding:"2px 7px",
             fontFamily:"inherit", fontWeight:700 }}>
-          ✏
+          Edit
         </button>
         <button onClick={() => onDelete(host)}
           title="Delete"
           style={{ background:C.subheader, border:`1px solid ${C.border}`, borderRadius:3,
             color: C.red, cursor:"pointer", fontSize:9, padding:"2px 7px",
             fontFamily:"inherit", fontWeight:700 }}>
-          ✕
+          x
         </button>
       </div>
     </div>
@@ -1158,10 +1159,10 @@ export default function App() {
           {tab===0 && <>
             {/* KPIs */}
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(160px,1fr))", gap:14, marginBottom:24 }}>
-              <KPI label="Total Hosts"  value={summary?.total||0}   color={themeValue.teal}   icon="🖥" sub={`${groups.length} group${groups.length!==1?"s":""}`}/>
-              <KPI label="Online"       value={summary?.online||0}  color={themeValue.green}  icon="🟢" sub="responding"/>
-              <KPI label="Offline"      value={summary?.offline||0} color={themeValue.red}    icon="🔴" sub="not responding"/>
-              <KPI label="Unknown"      value={summary?.unknown||0} color={themeValue.muted}  icon="⚪" sub="not yet checked"/>
+              <KPI label="Total Hosts"  value={summary?.total||0}   color={themeValue.teal}  sub={`${groups.length} group${groups.length!==1?"s":""}`}/>
+              <KPI label="Online"       value={summary?.online||0}  color={themeValue.green} sub="responding"/>
+              <KPI label="Offline"      value={summary?.offline||0} color={themeValue.red}   sub="not responding"/>
+              <KPI label="Unknown"      value={summary?.unknown||0} color={themeValue.muted} sub="not yet checked"/>
             </div>
 
             {/* Group cards */}
@@ -1303,7 +1304,7 @@ export default function App() {
                                       disabled={acking[h.id]}
                                       onClick={()=>handleAck(h)}
                                       style={{ border:`1px solid ${themeValue.orange}` }}>
-                                      {acking[h.id]?"…":"✓ Ack"}
+                                      {acking[h.id]?"…":"Ack"}
                                     </Btn>
                                   )}
                                   {h.status==="offline" && h.acknowledged && (
@@ -1311,7 +1312,7 @@ export default function App() {
                                       disabled={acking[h.id]}
                                       onClick={()=>handleUnack(h)}
                                       style={{ border:`1px solid #475569` }}>
-                                      {acking[h.id]?"…":"✕ Unack"}
+                                      {acking[h.id]?"…":"Unack"}
                                     </Btn>
                                   )}
                                   <Btn small color={themeValue.blue} onClick={()=>setEditHost(h)}>Edit</Btn>
