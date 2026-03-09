@@ -998,14 +998,14 @@ export default function App() {
   const handleAck = async (h) => {
     setAcking(a => ({...a, [h.id]: true}));
     await fetch(`${API}/api/hosts/${h.id}/acknowledge`, {method:"POST"});
-    await fetchAll();
+    await fetchHostsAndSummary();
     setAcking(a => ({...a, [h.id]: false}));
   };
 
   const handleUnack = async (h) => {
     setAcking(a => ({...a, [h.id]: true}));
     await fetch(`${API}/api/hosts/${h.id}/unacknowledge`, {method:"POST"});
-    await fetchAll();
+    await fetchHostsAndSummary();
     setAcking(a => ({...a, [h.id]: false}));
   };
 
