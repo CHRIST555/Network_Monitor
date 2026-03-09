@@ -888,35 +888,40 @@ export default function App() {
   const [theme,      setThemeState] = useState("dark");
   const intervalRef = useRef(null);
 
+  const safeFetch = async (url) => {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const text = await res.text();
+    try { return JSON.parse(text); } catch { throw new Error(`Bad JSON from ${url}`); }
+  };
+
   const fetchHostsAndSummary = useCallback(async () => {
     try {
-      const [hRes, sRes] = await Promise.all([
-        fetch(`${API}/api/hosts`),
-        fetch(`${API}/api/summary`),
+      const [hosts, summary] = await Promise.all([
+        safeFetch(`${API}/api/hosts`),
+        safeFetch(`${API}/api/summary`),
       ]);
-      setHosts(await hRes.json());
-      setSummary(await sRes.json());
-    } catch{}
+      setHosts(hosts);
+      setSummary(summary);
+    } catch(e) { console.warn("Poll error:", e.message); }
   },[]);
 
   const fetchAll = useCallback(async () => {
     try {
-      const [hRes, sRes, cfgRes] = await Promise.all([
-        fetch(`${API}/api/hosts`),
-        fetch(`${API}/api/summary`),
-        fetch(`${API}/api/config`),
+      const [hosts, summary, cfg] = await Promise.all([
+        safeFetch(`${API}/api/hosts`),
+        safeFetch(`${API}/api/summary`),
+        safeFetch(`${API}/api/config`),
       ]);
-      setHosts(await hRes.json());
-      setSummary(await sRes.json());
-      const cfgData = await cfgRes.json();
-      setSiteName(cfgData.network_name || "");
-      if (cfgData.theme) setThemeState(cfgData.theme);
-      // Only load bg_color from API on first load
-      if (cfgData.bg_color && !bgColorRef.current) {
-        bgColorRef.current = cfgData.bg_color;
-        setBgColor(cfgData.bg_color);
+      setHosts(hosts);
+      setSummary(summary);
+      setSiteName(cfg.network_name || "");
+      if (cfg.theme) setThemeState(cfg.theme);
+      if (cfg.bg_color && !bgColorRef.current) {
+        bgColorRef.current = cfg.bg_color;
+        setBgColor(cfg.bg_color);
       }
-    } catch{}
+    } catch(e) { console.warn("fetchAll error:", e.message); }
     setLoading(false);
   },[]);
 
