@@ -1255,7 +1255,9 @@ export default function App() {
                   </div>
                 </Panel>
               ) : (
-                Object.entries(grouped).sort(([a],[b])=>a.localeCompare(b)).map(([group, ghosts])=>(
+                groups.filter(g => grouped[g] && grouped[g].length > 0).map(group => {
+                  const ghosts = grouped[group];
+                  return (
                   <Panel key={group}>
                     <SH title={`${group} — ${ghosts.length} host${ghosts.length!==1?"s":""}`}
                       color={ghosts.some(h=>h.status==="offline")?themeValue.red:themeValue.teal}/>
@@ -1267,7 +1269,7 @@ export default function App() {
                         <tbody>
                           {ghosts.map((h,i)=>(
                             <tr key={h.id} style={{ borderBottom:`1px solid ${themeValue.border}`,
-                              background:i%2===0?themeValue.panel:"#12192A",
+                              background:i%2===0?themeValue.panel:themeValue.rowHover,
                               opacity:h.enabled===false?0.45:1,
                               animation:"fadeIn 0.2s ease" }}>
                               <TD style={{ fontSize:16, paddingRight:4 }} title={deviceLabel(h.device_type)}>{deviceIcon(h.device_type)}</TD>
@@ -1305,7 +1307,7 @@ export default function App() {
                                     </Btn>
                                   )}
                                   {h.status==="offline" && h.acknowledged && (
-                                    <Btn small color={C.border}
+                                    <Btn small color={themeValue.border}
                                       disabled={acking[h.id]}
                                       onClick={()=>handleUnack(h)}
                                       style={{ border:`1px solid #475569` }}>
@@ -1322,7 +1324,8 @@ export default function App() {
                       </table>
                     </div>
                   </Panel>
-                ))
+                  );
+                })
               )}
             </div>
           )}
