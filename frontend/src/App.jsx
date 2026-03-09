@@ -686,7 +686,7 @@ function HostTile({ host, onEdit, onDelete, onPing, pinging, acking, onAck, onUn
 
       {/* Status badge */}
       <div style={{ fontSize: 9, fontWeight: 700, color: glowColor,
-        background: s==="online"?"#0A1A0A":s==="offline"?"#1A0505":C.dark,
+        background: s==="online"?`${C.green}18`:s==="offline"?`${C.red}18`:`${C.muted}18`,
         border: `1px solid ${glowColor}44`, borderRadius: 3, padding: "2px 7px",
         display:"flex", alignItems:"center", gap:4 }}>
         <span style={{ width:6, height:6, borderRadius:"50%", background:glowColor,
