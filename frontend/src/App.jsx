@@ -192,7 +192,7 @@ const DEVICE_TYPES = [
   { value:"workstation",  label:"Workstation",     icon:"💻" },
   { value:"laptop",       label:"Laptop",          icon:"💻" },
   { value:"router",       label:"Router",          icon:"🔀" },
-  { value:"switch",       label:"Switch",          icon:"🔌" },
+  { value:"switch",       label:"Switch",          icon:"🔄" },
   { value:"firewall",     label:"Firewall",        icon:"🛡" },
   { value:"gateway",      label:"Gateway",         icon:"🚪" },
   { value:"access_point", label:"Access Point",    icon:"📶" },
@@ -201,6 +201,8 @@ const DEVICE_TYPES = [
   { value:"printer",      label:"Printer",         icon:"🖨" },
   { value:"nas",          label:"NAS / Storage",   icon:"💾" },
   { value:"sensor",       label:"Sensor",          icon:"🌡" },
+  { value:"ntp_server",   label:"NTP Server",      icon:"🕐" },
+  { value:"pdu",          label:"PDU",             icon:"🔌" },
   { value:"other",        label:"Other",           icon:"🔧" },
 ];
 
