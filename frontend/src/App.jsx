@@ -1121,7 +1121,7 @@ export default function App() {
             letterSpacing:"0.08em" }}>LIVE</span>
         </div>
         <div style={{ marginLeft:"auto", display:"flex", gap:8, flexShrink:0 }}>
-          <Btn onClick={()=>setShowSettings(true)} color={themeValue.panel}
+          <Btn onClick={()=>setShowSettings(true)} color={ACCENT.teal}
             style={{ border:`1px solid ${themeValue.border}` }} small>⚙ Settings</Btn>
           <Btn onClick={()=>{setEditHost(null);setShowAdd(true);}}
             color={ACCENT.orange} small>➕ Add Host</Btn>
