@@ -466,6 +466,14 @@ def ping_loop():
                     host_state[hid]["alerted_at"]       = None
                     host_state[hid]["acknowledged"]     = False  # auto-clear ack on recovery
                     host_state[hid]["ack_at"]           = None
+                    # Persist ack clearance to disk so all workers see it
+                    _disk_hosts = load_hosts()
+                    _updated = []
+                    for _h in _disk_hosts:
+                        if _h["id"] == hid:
+                            _h = {**_h, "acknowledged": False, "ack_at": None}
+                        _updated.append(_h)
+                    save_hosts(_updated)
                     # Always send recovery alert even if reminders were acknowledged
                     threading.Thread(
                         target=send_alert,
