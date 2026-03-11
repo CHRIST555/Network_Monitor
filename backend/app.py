@@ -72,6 +72,7 @@ DEFAULT_CONFIG = {
     "reminder_interval":    1800,   # seconds between reminder alerts (default 30m)
     "network_name":         "",     # custom header title
     "bg_color":             "",     # custom background color (hex)
+    "group_order":          [],     # user-defined group display order
 }
 
 def load_config():
@@ -533,8 +534,10 @@ def update_config():
         "ping_interval", "smtp_enabled", "smtp_host", "smtp_port",
         "smtp_user", "smtp_from", "smtp_to", "smtp_tls", "alert_cooldown",
         "reminder_enabled", "reminder_interval", "network_name", "bg_color",
+        "group_order",
     ]
     bool_fields = {"smtp_enabled", "smtp_tls", "reminder_enabled"}
+    list_fields = {"group_order"}
     for f in fields:
         if f in body:
             val = body[f]
@@ -544,6 +547,9 @@ def update_config():
                     val = val.lower() == "true"
                 else:
                     val = bool(val)
+            elif f in list_fields:
+                if not isinstance(val, list):
+                    val = []
             cfg[f] = val
 
     # Only update password if a real value was provided
