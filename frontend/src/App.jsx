@@ -898,7 +898,10 @@ export default function App() {
   const [bgColor,    setBgColor]   = useState("");
   const bgColorRef = useRef(""); // tracks last user-set value so fetchAll won't overwrite it
   const [theme,      setThemeState] = useState("dark");
-  const intervalRef = useRef(null);
+  const intervalRef  = useRef(null);
+  const importRef    = useRef(null);
+  const [importing,  setImporting] = useState(false);
+  const [importMsg,  setImportMsg] = useState(null); // {ok, text}
 
   const safeFetch = async (url) => {
     const res = await fetch(url);
@@ -1020,6 +1023,59 @@ export default function App() {
     await fetch(`${API}/api/hosts/${h.id}/unacknowledge`, {method:"POST"});
     setHosts(prev => prev.map(x => x.id === h.id ? {...x, acknowledged: false} : x));
     setAcking(a => ({...a, [h.id]: false}));
+  };
+
+  const handleExport = () => {
+    const exportData = hosts.map(h => ({
+      name:        h.name,
+      ip:          h.ip,
+      group:       h.group || "Ungrouped",
+      device_type: h.device_type || "other",
+    }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement("a");
+    a.href     = url;
+    a.download = `network-monitor-hosts-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImport = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    setImportMsg(null);
+    try {
+      const text     = await file.text();
+      const imported = JSON.parse(text);
+      if (!Array.isArray(imported)) throw new Error("File must contain a JSON array of hosts.");
+      const existingIPs = new Set(hosts.map(h => h.ip.trim().toLowerCase()));
+      let added = 0, skipped = 0;
+      for (const h of imported) {
+        if (!h.name || !h.ip) { skipped++; continue; }
+        if (existingIPs.has(h.ip.trim().toLowerCase())) { skipped++; continue; }
+        const res = await fetch(`${API}/api/hosts`, {
+          method:  "POST",
+          headers: { "Content-Type": "application/json" },
+          body:    JSON.stringify({
+            name:        h.name,
+            ip:          h.ip,
+            group:       h.group || "Ungrouped",
+            device_type: h.device_type || "other",
+            enabled:     true,
+          }),
+        });
+        if (res.ok) { added++; existingIPs.add(h.ip.trim().toLowerCase()); }
+        else skipped++;
+      }
+      await fetchHostsAndSummary();
+      setImportMsg({ ok: true, text: `Imported ${added} host${added!==1?"s":""}${skipped?`, ${skipped} skipped (duplicate IP or invalid)`:""}.` });
+    } catch(err) {
+      setImportMsg({ ok: false, text: `Import failed: ${err.message}` });
+    }
+    setImporting(false);
   };
 
   const groups = [...new Set([
@@ -1244,9 +1300,30 @@ export default function App() {
           {/* ════ HOSTS ════ */}
           {tab===1 && (
             <div style={{ display:"flex", flexDirection:"column", gap:18 }}>
-              <div style={{ display:"flex", justifyContent:"flex-end" }}>
+              <div style={{ display:"flex", justifyContent:"flex-end", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+                <input ref={importRef} type="file" accept=".json" style={{ display:"none" }} onChange={handleImport}/>
+                <Btn onClick={handleExport} color={ACCENT.teal} small
+                  style={{ border:`1px solid ${themeValue.border}` }}>
+                  Export JSON
+                </Btn>
+                <Btn onClick={()=>{ setImportMsg(null); importRef.current && importRef.current.click(); }}
+                  disabled={importing} color={ACCENT.teal} small
+                  style={{ border:`1px solid ${themeValue.border}` }}>
+                  {importing ? "Importing…" : "Import JSON"}
+                </Btn>
                 <Btn onClick={()=>setShowAdd(true)}>➕ Add Host</Btn>
               </div>
+              {importMsg && (
+                <div style={{ padding:"10px 16px", borderRadius:4, fontSize:12, fontWeight:600,
+                  background: importMsg.ok ? `${ACCENT.green}18` : `${ACCENT.red}18`,
+                  border: `1px solid ${importMsg.ok ? ACCENT.green : ACCENT.red}44`,
+                  color: importMsg.ok ? ACCENT.green : ACCENT.red,
+                  display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+                  <span>{importMsg.text}</span>
+                  <span onClick={()=>setImportMsg(null)}
+                    style={{ cursor:"pointer", opacity:0.6, marginLeft:12 }}>✕</span>
+                </div>
+              )}
 
               {hosts.length===0?(
                 <Panel>
