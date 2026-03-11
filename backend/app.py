@@ -433,7 +433,7 @@ def ping_loop():
                 elif new_status == "offline" and prev_status == "offline":
                     # Read ack from disk to stay in sync across workers
                     disk_hosts = load_hosts()
-                    disk_host  = next((x for x in disk_hosts if x["id"] == hid), {})
+                    disk_host  = next((x for x in disk_hosts if x["id"] == hid), {}) if disk_hosts else {}
                     is_acked   = disk_host.get("acknowledged", host_state[hid].get("acknowledged", False))
                     # Sync memory
                     host_state[hid]["acknowledged"] = is_acked
@@ -467,13 +467,19 @@ def ping_loop():
                     host_state[hid]["acknowledged"]     = False  # auto-clear ack on recovery
                     host_state[hid]["ack_at"]           = None
                     # Persist ack clearance to disk so all workers see it
+                    # SAFETY: re-load from disk and guard against empty result
+                    # to prevent overwriting the hosts file with an empty list
                     _disk_hosts = load_hosts()
-                    _updated = []
-                    for _h in _disk_hosts:
-                        if _h["id"] == hid:
-                            _h = {**_h, "acknowledged": False, "ack_at": None}
-                        _updated.append(_h)
-                    save_hosts(_updated)
+                    if _disk_hosts:
+                        _updated = []
+                        for _h in _disk_hosts:
+                            if _h["id"] == hid:
+                                _h = {**_h, "acknowledged": False, "ack_at": None}
+                            _updated.append(_h)
+                        if _updated:  # double-guard: never save an empty list
+                            save_hosts(_updated)
+                    else:
+                        print(f"[ACK] WARNING: load_hosts() returned empty during recovery for {hid} — skipping disk write to prevent data loss")
                     # Always send recovery alert even if reminders were acknowledged
                     threading.Thread(
                         target=send_alert,
