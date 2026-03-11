@@ -932,6 +932,9 @@ export default function App() {
       setSummary(summary);
       setSiteName(cfg.network_name || "");
       if (cfg.theme) setThemeState(cfg.theme);
+      if (cfg.group_order && Array.isArray(cfg.group_order) && cfg.group_order.length > 0) {
+        setGroupList(cfg.group_order);
+      }
       if (cfg.bg_color && !bgColorRef.current) {
         bgColorRef.current = cfg.bg_color;
         setBgColor(cfg.bg_color);
@@ -976,7 +979,15 @@ export default function App() {
 
   const handleDeleteGroup = (groupName) => {
     if (!window.confirm(`Delete group "${groupName}"? This cannot be undone.`)) return;
-    setGroupList(prev => prev.filter(g => g !== groupName));
+    setGroupList(prev => {
+      const next = prev.filter(g => g !== groupName);
+      fetch(`${API}/api/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_order: next }),
+      });
+      return next;
+    });
   };
 
   const handleMoveGroup = (groupName, direction) => {
@@ -988,13 +999,28 @@ export default function App() {
       const next = [...prev];
       next.splice(idx, 1);
       next.splice(newIdx, 0, groupName);
+      // Persist group order to backend
+      fetch(`${API}/api/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_order: next }),
+      });
       return next;
     });
   };
 
   const handleAddGroup = (groupName) => {
     if (!groupName.trim()) return;
-    setGroupList(prev => prev.includes(groupName) ? prev : [...prev, groupName]);
+    setGroupList(prev => {
+      if (prev.includes(groupName)) return prev;
+      const next = [...prev, groupName];
+      fetch(`${API}/api/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_order: next }),
+      });
+      return next;
+    });
   };
 
   const handleManualPing = async (h) => {
@@ -1089,6 +1115,14 @@ export default function App() {
     const hostGroups = [...new Set(hosts.map(h => h.group||"Ungrouped"))];
     setGroupList(prev => {
       const merged = [...new Set([...prev, ...hostGroups])];
+      // Only persist if new groups were actually added
+      if (merged.length !== prev.length) {
+        fetch(`${API}/api/config`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ group_order: merged }),
+        });
+      }
       return merged;
     });
   }, [hosts]);
